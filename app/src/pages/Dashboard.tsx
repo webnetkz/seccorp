@@ -54,6 +54,14 @@ export function Dashboard() {
         case "realtime_error":
           navigate("protection");
           return;
+        case "network_off":
+          await api.setNetworkProtection(true);
+          await reloadSettings();
+          break;
+        case "network_alert":
+        case "network_error":
+          navigate("network");
+          return;
         case "never_scanned":
         case "no_recent_scan":
           await startScan("quick");

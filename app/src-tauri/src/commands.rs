@@ -45,6 +45,7 @@ pub fn dashboard(app: &AppHandle) -> Dashboard {
     state.import_pending_threats();
     state.prune_threats();
     let realtime = crate::realtime::status(app);
+    let network = crate::network::status(app);
     let db = state.engine.db_info();
     let stats = state.stats();
     let active_threats = state.threats().len();
@@ -59,6 +60,13 @@ pub fn dashboard(app: &AppHandle) -> Dashboard {
         issues.push("realtime_off".into());
     } else if realtime.enabled && !realtime.running {
         issues.push("realtime_error".into());
+    }
+    if network.supported && !network.enabled {
+        issues.push("network_off".into());
+    } else if !network.alerts.is_empty() {
+        issues.push("network_alert".into());
+    } else if network.enabled && !network.running {
+        issues.push("network_error".into());
     }
     match stats.last_scan_at {
         None => issues.push("never_scanned".into()),
@@ -91,6 +99,7 @@ pub fn dashboard(app: &AppHandle) -> Dashboard {
         status: status.into(),
         issues,
         realtime,
+        network,
         db,
         db_ready: state.is_db_ready(),
         stats,
@@ -136,6 +145,12 @@ pub fn apply_settings(app: &AppHandle, new: Settings) -> CmdResult<Settings> {
         || old.max_file_size_mb != saved.max_file_size_mb;
     if realtime_changed {
         crate::realtime::apply(app);
+    }
+    let network_changed = old.network_monitor_enabled != saved.network_monitor_enabled
+        || old.network_threat_intel != saved.network_threat_intel
+        || old.network_spyware_heuristics != saved.network_spyware_heuristics;
+    if network_changed {
+        crate::network::apply(app);
     }
     if old.language != saved.language {
         crate::tray::refresh(app);
@@ -418,6 +433,37 @@ fn default_export_dir(app: &AppHandle) -> PathBuf {
 #[tauri::command]
 pub async fn get_realtime_status(app: AppHandle) -> CmdResult<RealtimeStatus> {
     blocking(app, |app| Ok(crate::realtime::status(&app))).await
+}
+
+// ---------------------------------------------------------- network guard
+
+#[tauri::command]
+pub async fn get_network_status(app: AppHandle) -> CmdResult<NetworkStatus> {
+    blocking(app, |app| Ok(crate::network::status(&app))).await
+}
+
+#[tauri::command]
+pub async fn scan_network_now(app: AppHandle) -> CmdResult<NetworkStatus> {
+    blocking(app, |app| crate::network::scan_now(&app)).await
+}
+
+#[tauri::command]
+pub async fn set_network_protection(app: AppHandle, enabled: bool) -> CmdResult<NetworkStatus> {
+    blocking(app, move |app| {
+        let state = app.state::<AppState>();
+        let mut settings = state.settings();
+        settings.network_monitor_enabled = enabled;
+        state.save_settings(settings)?;
+        crate::network::apply(&app);
+        let _ = app.emit("status://changed", ());
+        Ok(crate::network::status(&app))
+    })
+    .await
+}
+
+#[tauri::command]
+pub fn dismiss_network_alert(app: AppHandle, id: String) -> NetworkStatus {
+    crate::network::dismiss_alert(&app, &id)
 }
 
 #[tauri::command]

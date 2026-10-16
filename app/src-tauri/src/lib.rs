@@ -6,6 +6,7 @@ mod i18n;
 #[cfg(desktop)]
 mod media;
 mod model;
+mod network;
 mod notify;
 mod platform;
 mod realtime;
@@ -91,6 +92,10 @@ pub fn run() {
             commands::get_realtime_status,
             commands::set_realtime,
             commands::get_realtime_events,
+            commands::get_network_status,
+            commands::scan_network_now,
+            commands::set_network_protection,
+            commands::dismiss_network_alert,
             commands::get_default_watch_paths,
             commands::get_db_info,
             commands::check_updates,
@@ -133,6 +138,7 @@ pub fn run() {
                     state.reload_db();
                     let _ = handle.emit("db://reloaded", state.engine.db_info());
                     realtime::apply(&handle);
+                    network::apply(&handle);
                 }
             })?;
             updater::spawn_auto_update(&handle);

@@ -1358,6 +1358,120 @@
   border-radius: 3px;
 }
 
+/* ------------------------------------------------------- network monitor */
+
+.network-metrics {
+  margin-top: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.network-metrics .metric-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metric-value.small {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.network-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.network-alert.suspicious {
+  border-color: color-mix(in srgb, var(--warn) 32%, var(--border));
+  background: var(--warn-soft);
+}
+
+.network-alert.malicious {
+  border-color: color-mix(in srgb, var(--danger) 32%, var(--border));
+  background: var(--danger-soft);
+}
+
+.network-alert > svg {
+  flex: 0 0 auto;
+  color: var(--warn);
+  margin-top: 2px;
+}
+
+.network-alert.malicious > svg {
+  color: var(--danger);
+}
+
+.network-reasons {
+  margin: 9px 0 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.network-reasons li + li {
+  margin-top: 3px;
+}
+
+.network-table {
+  overflow-x: auto;
+}
+
+.network-head,
+.network-row {
+  display: grid;
+  grid-template-columns: 12px minmax(180px, 1.5fr) minmax(170px, 1fr) minmax(170px, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 680px;
+}
+
+.network-head {
+  padding: 0 10px 9px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.network-row {
+  padding: 11px 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.network-row.suspicious {
+  background: var(--warn-soft);
+}
+
+.network-row.malicious {
+  background: var(--danger-soft);
+}
+
+.network-process,
+.network-endpoint,
+.network-local {
+  min-width: 0;
+}
+
+.network-process > .mono,
+.network-endpoint > .faint {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+@media (max-width: 699px) {
+  .network-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* ----------------------------------------------------------- checklist */
 
 .check {

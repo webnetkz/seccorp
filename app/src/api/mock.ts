@@ -42,12 +42,16 @@ const features: T.Features = {
   storagePermission: platform === "android",
   fullDiskAccess: platform === "macos",
   removableMedia: desktop,
+  networkProtection: desktop,
 };
 
 let settings: T.Settings = {
   language: (params.get("lang") as T.Settings["language"]) || "auto",
   theme: (params.get("theme") as T.Settings["theme"]) || "system",
   realtimeEnabled: platform !== "ios",
+  networkMonitorEnabled: desktop,
+  networkThreatIntel: desktop,
+  networkSpywareHeuristics: desktop,
   realtimePaths: [],
   autoQuarantine: true,
   notifications: true,
@@ -128,6 +132,69 @@ let realtimeEvents: T.RealtimeEvent[] = [
   { time: now() - 1900, path: p("Desktop", "notes.txt"), verdict: "clean", threatName: null, action: "none" },
 ];
 
+let networkAlerts: T.NetworkAlert[] = params.get("networkThreat") === "1"
+  ? [{
+      id: "network-demo-alert",
+      detectedAt: now() - 75,
+      severity: "malicious",
+      kind: "known_c2",
+      process: platform === "windows" ? "update.exe" : "update-agent",
+      executable: platform === "windows" ? p("Downloads", "update.exe") : "/private/tmp/.update/update-agent",
+      remoteAddress: "162.243.103.246",
+      remotePort: 4444,
+      reasons: ["known_c2", "suspicious_location", "risky_port"],
+    }]
+  : [];
+
+const networkConnections: T.NetworkConnection[] = [
+  {
+    protocol: "TCP",
+    localAddress: "192.168.1.40",
+    localPort: 52144,
+    remoteAddress: "142.250.74.110",
+    remotePort: 443,
+    state: "ESTABLISHED",
+    pid: 902,
+    process: "browser",
+    executable: platform === "windows" ? "C:\\Program Files\\Browser\\browser.exe" : "/Applications/Browser.app/Contents/MacOS/Browser",
+    verdict: "clean",
+    reasons: [],
+  },
+  {
+    protocol: "TCP",
+    localAddress: "127.0.0.1",
+    localPort: 3000,
+    remoteAddress: null,
+    remotePort: null,
+    state: "LISTEN",
+    pid: 1102,
+    process: "node",
+    executable: "/usr/local/bin/node",
+    verdict: "clean",
+    reasons: [],
+  },
+];
+
+function networkStatus(): T.NetworkStatus {
+  const flagged = networkAlerts.length
+    ? [{ ...networkConnections[0], process: networkAlerts[0].process, executable: networkAlerts[0].executable, remoteAddress: networkAlerts[0].remoteAddress, remotePort: networkAlerts[0].remotePort, verdict: networkAlerts[0].severity, reasons: networkAlerts[0].reasons }]
+    : [];
+  return {
+    supported: desktop,
+    enabled: settings.networkMonitorEnabled,
+    running: settings.networkMonitorEnabled,
+    scanning: false,
+    lastScanAt: now() - 20,
+    activeConnections: 1 + flagged.length,
+    listeningPorts: 1,
+    indicatorCount: 5,
+    intelligenceUpdatedAt: now() - 600,
+    connections: [...flagged, ...networkConnections],
+    alerts: networkAlerts,
+    error: null,
+  };
+}
+
 let scanTimer: ReturnType<typeof setInterval> | null = null;
 let scan: { id: string; kind: T.ScanKind; progress: T.ScanProgress; threats: T.ThreatEntry[]; tick: number } | null = null;
 
@@ -135,12 +202,15 @@ function dashboard(): T.Dashboard {
   const issues: T.IssueCode[] = [];
   if (threats.length) issues.push("threats");
   if (!settings.realtimeEnabled) issues.push("realtime_off");
+  if (desktop && !settings.networkMonitorEnabled) issues.push("network_off");
+  else if (networkAlerts.length) issues.push("network_alert");
   if (platform === "macos" && params.get("fda") === "1") issues.push("full_disk_access");
   if (platform === "android" && params.get("storage") === "0") issues.push("storage_access");
   return {
     status: threats.length ? "danger" : issues.filter((i) => i !== "full_disk_access").length ? "attention" : "protected",
     issues,
     realtime: realtimeStatus(),
+    network: networkStatus(),
     db,
     dbReady: true,
     stats,
@@ -323,6 +393,18 @@ const handlers: Record<string, (a: Record<string, unknown>) => unknown> = {
   },
   get_realtime_events: () => realtimeEvents,
   get_default_watch_paths: () => realtimeStatus().watched.length ? realtimeStatus().watched : [p("Downloads"), p("Desktop")],
+  get_network_status: () => networkStatus(),
+  scan_network_now: () => networkStatus(),
+  set_network_protection: (a) => {
+    settings = { ...settings, networkMonitorEnabled: Boolean(a.enabled) };
+    emit("status://changed", null);
+    return networkStatus();
+  },
+  dismiss_network_alert: (a) => {
+    networkAlerts = networkAlerts.filter((alert) => alert.id !== String(a.id));
+    emit("status://changed", null);
+    return networkStatus();
+  },
   get_db_info: () => db,
   check_updates: () => ({ configured: true, available: false, current: db.version, latest: db.version, released: db.released, size: 48_000_000, notes: null, checkedAt: now() }),
   apply_update: () => db,

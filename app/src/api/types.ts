@@ -21,6 +21,7 @@ export interface Features {
   storagePermission: boolean;
   fullDiskAccess: boolean;
   removableMedia: boolean;
+  networkProtection: boolean;
 }
 
 export interface AppInfo {
@@ -159,6 +160,47 @@ export interface RealtimeEvent {
   action: "none" | "quarantined" | "failed";
 }
 
+export interface NetworkConnection {
+  protocol: "TCP" | "UDP";
+  localAddress: string;
+  localPort: number;
+  remoteAddress: string | null;
+  remotePort: number | null;
+  state: string;
+  pid: number | null;
+  process: string;
+  executable: string | null;
+  verdict: Verdict;
+  reasons: string[];
+}
+
+export interface NetworkAlert {
+  id: string;
+  detectedAt: number;
+  severity: "suspicious" | "malicious";
+  kind: "known_c2" | "possible_spyware" | "infected_process";
+  process: string;
+  executable: string | null;
+  remoteAddress: string | null;
+  remotePort: number | null;
+  reasons: string[];
+}
+
+export interface NetworkStatus {
+  supported: boolean;
+  enabled: boolean;
+  running: boolean;
+  scanning: boolean;
+  lastScanAt: number | null;
+  activeConnections: number;
+  listeningPorts: number;
+  indicatorCount: number;
+  intelligenceUpdatedAt: number | null;
+  connections: NetworkConnection[];
+  alerts: NetworkAlert[];
+  error: string | null;
+}
+
 export type IssueCode =
   | "threats"
   | "realtime_off"
@@ -167,12 +209,16 @@ export type IssueCode =
   | "no_recent_scan"
   | "db_outdated"
   | "storage_access"
-  | "full_disk_access";
+  | "full_disk_access"
+  | "network_off"
+  | "network_alert"
+  | "network_error";
 
 export interface Dashboard {
   status: "protected" | "attention" | "danger";
   issues: IssueCode[];
   realtime: RealtimeStatus;
+  network: NetworkStatus;
   db: DbInfo;
   dbReady: boolean;
   stats: Stats;
@@ -197,6 +243,9 @@ export interface Settings {
   language: "auto" | "ru" | "en";
   theme: "system" | "dark" | "light";
   realtimeEnabled: boolean;
+  networkMonitorEnabled: boolean;
+  networkThreatIntel: boolean;
+  networkSpywareHeuristics: boolean;
   realtimePaths: string[];
   autoQuarantine: boolean;
   notifications: boolean;

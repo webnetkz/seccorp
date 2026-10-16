@@ -33,6 +33,12 @@ pub struct Settings {
     /// "system", "dark" or "light".
     pub theme: String,
     pub realtime_enabled: bool,
+    /// Inspect active sockets in the background (desktop only).
+    pub network_monitor_enabled: bool,
+    /// Match remote IP addresses against the locally downloaded C2 list.
+    pub network_threat_intel: bool,
+    /// Correlate unusual connections with process location and persistence.
+    pub network_spyware_heuristics: bool,
     /// Folders watched in real time (empty = platform defaults).
     pub realtime_paths: Vec<String>,
     pub auto_quarantine: bool,
@@ -66,6 +72,9 @@ impl Default for Settings {
             language: "auto".into(),
             theme: "system".into(),
             realtime_enabled: cfg!(any(desktop, target_os = "android")),
+            network_monitor_enabled: cfg!(desktop),
+            network_threat_intel: cfg!(desktop),
+            network_spyware_heuristics: cfg!(desktop),
             realtime_paths: Vec::new(),
             auto_quarantine: true,
             notifications: true,

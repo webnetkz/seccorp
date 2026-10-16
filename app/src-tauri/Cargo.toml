@@ -41,6 +41,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 tauri-plugin-autostart = "2.7"
 tauri-plugin-single-instance = "2.5"
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+netstat2 = "0.11"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.56"

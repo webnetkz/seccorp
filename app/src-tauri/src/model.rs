@@ -31,6 +31,8 @@ pub struct Features {
     pub full_disk_access: bool,
     /// Desktop can detect newly mounted removable media.
     pub removable_media: bool,
+    /// Desktop can inspect local sockets and correlate them with processes.
+    pub network_protection: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -140,6 +142,59 @@ pub struct RealtimeStatus {
     pub limited: bool,
 }
 
+/// One socket observed by the local network monitor.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkConnection {
+    pub protocol: String,
+    pub local_address: String,
+    pub local_port: u16,
+    pub remote_address: Option<String>,
+    pub remote_port: Option<u16>,
+    pub state: String,
+    pub pid: Option<u32>,
+    pub process: String,
+    pub executable: Option<String>,
+    /// "clean", "suspicious" or "malicious".
+    pub verdict: String,
+    /// Stable reason codes translated by the UI.
+    pub reasons: Vec<String>,
+}
+
+/// A network detection kept in the event feed until the user dismisses it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkAlert {
+    pub id: String,
+    pub detected_at: u64,
+    /// "suspicious" or "malicious".
+    pub severity: String,
+    /// "known_c2", "possible_spyware" or "infected_process".
+    pub kind: String,
+    pub process: String,
+    pub executable: Option<String>,
+    pub remote_address: Option<String>,
+    pub remote_port: Option<u16>,
+    pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkStatus {
+    pub supported: bool,
+    pub enabled: bool,
+    pub running: bool,
+    pub scanning: bool,
+    pub last_scan_at: Option<u64>,
+    pub active_connections: usize,
+    pub listening_ports: usize,
+    pub indicator_count: usize,
+    pub intelligence_updated_at: Option<u64>,
+    pub connections: Vec<NetworkConnection>,
+    pub alerts: Vec<NetworkAlert>,
+    pub error: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Dashboard {
@@ -148,6 +203,7 @@ pub struct Dashboard {
     /// Issue codes translated by the UI.
     pub issues: Vec<String>,
     pub realtime: RealtimeStatus,
+    pub network: NetworkStatus,
     pub db: DbInfo,
     pub db_ready: bool,
     pub stats: Stats,

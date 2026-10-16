@@ -6,6 +6,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { DevicePage } from "./pages/Device";
 import { HistoryPage } from "./pages/History";
 import { ProtectionPage } from "./pages/Protection";
+import { NetworkPage } from "./pages/Network";
 import { QuarantinePage } from "./pages/Quarantine";
 import { ScanPage } from "./pages/Scan";
 import { SettingsPage } from "./pages/Settings";
@@ -22,6 +23,8 @@ function Page() {
       return <ThreatsPage />;
     case "protection":
       return <ProtectionPage />;
+    case "network":
+      return <NetworkPage />;
     case "quarantine":
       return <QuarantinePage />;
     case "history":

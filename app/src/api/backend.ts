@@ -65,6 +65,10 @@ export const api = {
   setRealtime: (enabled: boolean) => call<T.RealtimeStatus>("set_realtime", { enabled }),
   realtimeEvents: () => call<T.RealtimeEvent[]>("get_realtime_events"),
   defaultWatchPaths: () => call<string[]>("get_default_watch_paths"),
+  networkStatus: () => call<T.NetworkStatus>("get_network_status"),
+  scanNetwork: () => call<T.NetworkStatus>("scan_network_now"),
+  setNetworkProtection: (enabled: boolean) => call<T.NetworkStatus>("set_network_protection", { enabled }),
+  dismissNetworkAlert: (id: string) => call<T.NetworkStatus>("dismiss_network_alert", { id }),
 
   dbInfo: () => call<T.DbInfo>("get_db_info"),
   checkUpdates: () => call<T.UpdateCheck>("check_updates"),

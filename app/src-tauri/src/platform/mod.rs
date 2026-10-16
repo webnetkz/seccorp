@@ -63,6 +63,7 @@ pub fn features() -> Features {
         storage_permission: android,
         full_disk_access: cfg!(target_os = "macos"),
         removable_media: desktop,
+        network_protection: desktop,
     }
 }
 

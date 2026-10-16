@@ -1,6 +1,7 @@
 //! Application state and its persistence.
 
 use crate::model::{ScanRecord, Stats, ThreatEntry, UpdateCheck};
+use crate::network::NetworkProtection;
 use crate::realtime::Realtime;
 use crate::scan::RunningScan;
 use crate::settings::Settings;
@@ -40,6 +41,7 @@ pub struct Paths {
     pub apps_report: PathBuf,
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
     pub pending_threats: PathBuf,
+    pub network_intel: PathBuf,
 }
 
 impl Paths {
@@ -58,6 +60,7 @@ impl Paths {
             cache: data.join("scan-cache.bin"),
             apps_report: data.join("apps-report.json"),
             pending_threats: data.join("pending_threats.jsonl"),
+            network_intel: data.join("network/feodo-ipblocklist.txt"),
             data,
         }
     }
@@ -118,6 +121,7 @@ pub struct AppState {
     pub quarantine: Quarantine,
     pub scan: Mutex<Option<RunningScan>>,
     pub realtime: Realtime,
+    pub network: NetworkProtection,
     pub update_lock: Mutex<()>,
     #[cfg_attr(not(feature = "online-update"), allow(dead_code))]
     pub last_update_check: Mutex<Option<UpdateCheck>>,
@@ -151,6 +155,7 @@ impl AppState {
             db_ready_cv: Condvar::new(),
             scan: Mutex::new(None),
             realtime: Realtime::default(),
+            network: NetworkProtection::default(),
             update_lock: Mutex::new(()),
             last_update_check: Mutex::new(None),
             restored: Mutex::new(HashMap::new()),

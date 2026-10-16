@@ -8,6 +8,7 @@ export type Route =
   | "scan"
   | "threats"
   | "protection"
+  | "network"
   | "quarantine"
   | "history"
   | "signatures"
