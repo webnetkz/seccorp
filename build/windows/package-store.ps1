@@ -101,6 +101,7 @@ try {
     <Application
       Id="SecCorp"
       Executable="SecCorp.exe"
+      EntryPoint="Windows.FullTrustApplication"
       uap10:RuntimeBehavior="packagedClassicApp"
       uap10:TrustLevel="mediumIL">
       <uap:VisualElements
