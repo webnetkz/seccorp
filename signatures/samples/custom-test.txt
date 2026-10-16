@@ -1,0 +1,2 @@
+SECCOM-CUSTOM-SIGNATURE-TEST-7b3f9a
+This file is harmless. It only checks that a custom SecCorp signature database is loaded.

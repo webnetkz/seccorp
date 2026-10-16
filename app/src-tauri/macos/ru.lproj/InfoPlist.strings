@@ -1,0 +1,6 @@
+/* Тексты системных запросов доступа macOS. */
+"NSDesktopFolderUsageDescription" = "SecCorp проверяет файлы на Рабочем столе на вредоносные программы.";
+"NSDocumentsFolderUsageDescription" = "SecCorp проверяет ваши документы на вредоносные программы.";
+"NSDownloadsFolderUsageDescription" = "SecCorp проверяет загруженные файлы на вредоносные программы.";
+"NSRemovableVolumesUsageDescription" = "SecCorp проверяет файлы на внешних дисках на вредоносные программы.";
+"NSNetworkVolumesUsageDescription" = "SecCorp проверяет файлы на сетевых дисках на вредоносные программы.";

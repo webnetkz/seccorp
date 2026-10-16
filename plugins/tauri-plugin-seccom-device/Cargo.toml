@@ -1,0 +1,19 @@
+[package]
+name = "tauri-plugin-seccom-device"
+description = "SecCorp native device integration: storage access, installed apps, device security, background protection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+links = "tauri-plugin-seccom-device"
+exclude = ["/android/build", "/android/.gradle", "/ios/.build"]
+
+[dependencies]
+tauri = { version = "2.12" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7", features = ["build"] }

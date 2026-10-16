@@ -1,0 +1,95 @@
+/* Design tokens. Dark is the default theme. */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #060a13;
+  --bg-glow-1: rgba(34, 184, 240, 0.10);
+  --bg-glow-2: rgba(45, 212, 191, 0.07);
+  --surface: #0d1526;
+  --surface-2: #121c31;
+  --surface-3: #18243d;
+  --surface-hover: #172340;
+  --border: rgba(148, 163, 184, 0.11);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --text: #e8eef8;
+  --text-2: #a9b5c9;
+  --text-3: #6f7e97;
+  --accent: #22c3ee;
+  --accent-strong: #3b82f6;
+  --accent-soft: rgba(34, 195, 238, 0.13);
+  --accent-grad: linear-gradient(135deg, #2dd4bf 0%, #22b8f0 52%, #3b6cf6 100%);
+  --ok: #2dd4a0;
+  --ok-strong: #10b981;
+  --ok-soft: rgba(45, 212, 160, 0.13);
+  --ok-grad: linear-gradient(135deg, #34e5c5 0%, #22b8f0 100%);
+  --warn: #fbbf24;
+  --warn-strong: #f59e0b;
+  --warn-soft: rgba(251, 191, 36, 0.13);
+  --warn-grad: linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%);
+  --danger: #fb6185;
+  --danger-strong: #f43f5e;
+  --danger-soft: rgba(251, 97, 133, 0.13);
+  --danger-grad: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --sidebar-bg: rgba(9, 15, 28, 0.78);
+  --nav-bg: rgba(10, 16, 30, 0.86);
+  --overlay: rgba(2, 6, 16, 0.62);
+  --input-bg: #0a1222;
+  --track: rgba(148, 163, 184, 0.16);
+  --focus: 0 0 0 3px rgba(34, 195, 238, 0.35);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --bg-glow-1: rgba(34, 184, 240, 0.10);
+  --bg-glow-2: rgba(45, 212, 191, 0.08);
+  --surface: #ffffff;
+  --surface-2: #f6f8fc;
+  --surface-3: #edf1f8;
+  --surface-hover: #f1f5fb;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --text: #0e1729;
+  --text-2: #475569;
+  --text-3: #7c8aa1;
+  --accent: #0ea5d9;
+  --accent-strong: #2563eb;
+  --accent-soft: rgba(14, 165, 217, 0.10);
+  --ok: #0f9f75;
+  --ok-strong: #059669;
+  --ok-soft: rgba(16, 185, 129, 0.11);
+  --warn: #c27a0a;
+  --warn-strong: #d97706;
+  --warn-soft: rgba(245, 158, 11, 0.12);
+  --danger: #e11d48;
+  --danger-strong: #be123c;
+  --danger-soft: rgba(225, 29, 72, 0.09);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.18);
+  --sidebar-bg: rgba(255, 255, 255, 0.82);
+  --nav-bg: rgba(255, 255, 255, 0.9);
+  --overlay: rgba(15, 23, 42, 0.38);
+  --input-bg: #ffffff;
+  --track: rgba(15, 23, 42, 0.08);
+  --focus: 0 0 0 3px rgba(14, 165, 217, 0.28);
+}
+
+:root {
+  --radius-lg: 22px;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --sidebar-w: 252px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", Roboto, "Inter", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "SF Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, "Roboto Mono", monospace;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}

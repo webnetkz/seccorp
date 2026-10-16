@@ -1,0 +1,60 @@
+# Windows build: NSIS installer (.exe) and MSI for x64 (+ NSIS for ARM64).
+# Runs on demand or for tags like v1.2.3. Independent from the other platforms.
+name: Build Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "Architecture"
+        type: choice
+        options: [x64, arm64, both]
+        default: x64
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      # Ed25519 public key that signs signature-database updates (hex) and the
+      # update.json URL. Both are compiled into the app; leave empty to disable.
+      SECCOM_UPDATE_PUBKEY: ${{ vars.SECCOM_UPDATE_PUBKEY }}
+      SECCOM_UPDATE_URL: ${{ vars.SECCOM_UPDATE_URL }}
+      # Optional code signing command; %1 is replaced with the file to sign.
+      SECCOM_WINDOWS_SIGN_COMMAND: ${{ secrets.SECCOM_WINDOWS_SIGN_COMMAND }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: windows
+
+      - name: Build
+        shell: pwsh
+        run: ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: seccom-windows
+          path: dist-release/windows/
+          if-no-files-found: error

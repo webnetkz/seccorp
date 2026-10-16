@@ -1,0 +1,80 @@
+# Android build: APK (direct install) and AAB (Google Play).
+# Release signing is used when the keystore secrets exist; otherwise the output is unsigned.
+name: Build Android
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SECCOM_UPDATE_PUBKEY: ${{ vars.SECCOM_UPDATE_PUBKEY }}
+      SECCOM_UPDATE_URL: ${{ vars.SECCOM_UPDATE_URL }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: |
+          sdkmanager --install "ndk;27.2.12479018"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: android
+
+      # Secrets: ANDROID_KEYSTORE_BASE64 (base64 of the .jks), ANDROID_KEYSTORE_PASSWORD,
+      # ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD. The keystore only lives in the runner's temp dir.
+      - name: Prepare signing keystore
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/seccom-release.jks"
+          echo "SECCOM_ANDROID_KEYSTORE=$RUNNER_TEMP/seccom-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build
+        env:
+          SECCOM_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SECCOM_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SECCOM_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./build/android/build.sh --both
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/seccom-release.jks"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: seccom-android
+          path: dist-release/android/
+          if-no-files-found: error

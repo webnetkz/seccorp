@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seccom_channel_status">Protection status</string>
+    <string name="seccom_channel_alerts">Threat alerts</string>
+    <string name="seccom_status_title">SecCorp protection is on</string>
+    <string name="seccom_status_text">New apps and downloads are checked automatically</string>
+    <string name="seccom_threat_title">Threat detected</string>
+    <string name="seccom_action_uninstall">Uninstall</string>
+</resources>

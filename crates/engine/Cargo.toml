@@ -1,0 +1,41 @@
+[package]
+name = "seccom-engine"
+description = "SecCorp antivirus scanning engine: signatures, rules, heuristics, archives, quarantine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["realtime"]
+# File-system monitoring (notify: ReadDirectoryChangesW / FSEvents / inotify / kqueue)
+realtime = ["dep:notify"]
+
+[dependencies]
+aho-corasick = "1.1"
+regex = "1.13"
+memchr = "2.7"
+sha2 = "0.11"
+md-5 = "0.11"
+sha1 = "0.11"
+goblin = "0.10"
+cfb = "0.15"
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs", "deflate64"] }
+flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
+tar = { version = "0.4", default-features = false }
+walkdir = "2.5"
+crossbeam-channel = "0.5"
+ed25519-dalek = "3"
+chacha20poly1305 = "0.11"
+getrandom = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+log.workspace = true
+hex.workspace = true
+notify = { version = "8", optional = true }
+
+[dev-dependencies]
+tempfile = "3"

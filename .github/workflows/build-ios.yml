@@ -1,0 +1,83 @@
+# iOS build: signed .ipa for App Store Connect / TestFlight.
+# Requires an Apple Developer account: set the APPLE_DEVELOPMENT_TEAM variable and
+# an App Store Connect API key (secrets APPLE_API_KEY, APPLE_API_ISSUER, APPLE_API_KEY_P8).
+name: Build iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      export:
+        description: "Export method"
+        type: choice
+        options: [app-store-connect, release-testing, debugging]
+        default: app-store-connect
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    env:
+      SECCOM_UPDATE_PUBKEY: ${{ vars.SECCOM_UPDATE_PUBKEY }}
+      SECCOM_UPDATE_URL: ${{ vars.SECCOM_UPDATE_URL }}
+      APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: ios
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      # The private key (.p8) only lives in the runner's temp dir.
+      - name: Prepare App Store Connect API key
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -z "$APPLE_API_KEY_P8" ]; then
+            echo "::error::Set the APPLE_API_KEY, APPLE_API_ISSUER and APPLE_API_KEY_P8 secrets."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/private_keys/AuthKey_${APPLE_API_KEY}.p8" >> "$GITHUB_ENV"
+          echo "API_PRIVATE_KEYS_DIR=$RUNNER_TEMP/private_keys" >> "$GITHUB_ENV"
+
+      - name: Build
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: ./build/ios/build.sh --export "${{ inputs.export || 'app-store-connect' }}"
+
+      - name: Remove API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/private_keys/AuthKey_*.p8
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: seccom-ios
+          path: dist-release/ios/
+          if-no-files-found: error

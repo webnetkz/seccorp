@@ -1,0 +1,38 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Frontend
+/app/node_modules/
+/app/dist/
+
+# Tauri: generated per machine by `tauri android init` / `tauri ios init`
+# (the build scripts re-create and configure them)
+/app/src-tauri/gen/
+/plugins/tauri-plugin-seccom-device/android/.tauri/
+
+# Build outputs collected by build/*
+/dist-release/
+/dist-db/
+
+# Secrets — never commit them
+/keys/
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+keystore.properties
+key.properties
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

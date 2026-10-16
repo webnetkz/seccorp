@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SecCorp",
+        "width": 1200,
+        "height": 780,
+        "minWidth": 940,
+        "minHeight": 600,
+        "center": true,
+        "visible": false
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["nsis", "msi"],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["Russian", "English"],
+        "displayLanguageSelector": true
+      },
+      "wix": {
+        "language": ["ru-RU", "en-US"]
+      }
+    }
+  }
+}

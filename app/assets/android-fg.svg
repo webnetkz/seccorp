@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="shield" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#34E5C5"/>
+      <stop offset="0.55" stop-color="#22B8F0"/>
+      <stop offset="1" stop-color="#3B6CF6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.62) translate(-512 -517)">
+    <path d="M512 168 L782 268 C796 273 805 286 805 301 L805 486 C805 668 684 806 524 866 C516 869 508 869 500 866 C340 806 219 668 219 486 L219 301 C219 286 228 273 242 268 Z" fill="url(#shield)"/>
+    <path d="M512 232 L745 318 L745 486 C745 637 648 755 512 808 C376 755 279 637 279 486 L279 318 Z" fill="#0B1B3A" opacity="0.22"/>
+    <path d="M398 520 L478 600 L640 438" fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

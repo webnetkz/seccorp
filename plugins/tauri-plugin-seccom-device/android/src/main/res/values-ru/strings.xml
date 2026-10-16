@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seccom_channel_status">Статус защиты</string>
+    <string name="seccom_channel_alerts">Обнаруженные угрозы</string>
+    <string name="seccom_status_title">Защита SecCorp включена</string>
+    <string name="seccom_status_text">Новые приложения и загрузки проверяются автоматически</string>
+    <string name="seccom_threat_title">Обнаружена угроза</string>
+    <string name="seccom_action_uninstall">Удалить</string>
+</resources>

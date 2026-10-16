@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged into SecCorp.app/Contents/Info.plist (see tauri.macos.conf.json). -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+	</array>
+	<!-- Shown in macOS privacy prompts (translations: macos/*.lproj/InfoPlist.strings).
+	     With Full Disk Access granted these prompts do not appear at all. -->
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>SecCorp checks files on your Desktop for malware.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>SecCorp checks your documents for malware.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>SecCorp checks downloaded files for malware.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>SecCorp checks files on external drives for malware.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>SecCorp checks files on network drives for malware.</string>
+</dict>
+</plist>

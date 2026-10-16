@@ -1,0 +1,18 @@
+[package]
+name = "seccom-cli"
+description = "SecCorp command-line scanner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "seccom-cli"
+path = "src/main.rs"
+
+[dependencies]
+seccom-engine = { workspace = true, features = ["realtime"] }
+clap = { version = "4.5", features = ["derive"] }
+serde_json.workspace = true
+anyhow = "1"

@@ -1,0 +1,3 @@
+# Example SHA-256 signatures (ClamAV .hsb format: sha256:size:name).
+# Matches the harmless marker file signatures/samples/custom-test.txt.
+13717fc345522f0f78f1dff278a839e7d44c6b6fcb9412d44486bd53b773e988:125:SecCorp-Custom-Test.Hash

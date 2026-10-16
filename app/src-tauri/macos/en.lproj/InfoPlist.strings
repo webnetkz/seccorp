@@ -1,0 +1,6 @@
+/* Privacy prompts shown by macOS. */
+"NSDesktopFolderUsageDescription" = "SecCorp checks files on your Desktop for malware.";
+"NSDocumentsFolderUsageDescription" = "SecCorp checks your documents for malware.";
+"NSDownloadsFolderUsageDescription" = "SecCorp checks downloaded files for malware.";
+"NSRemovableVolumesUsageDescription" = "SecCorp checks files on external drives for malware.";
+"NSNetworkVolumesUsageDescription" = "SecCorp checks files on network drives for malware.";

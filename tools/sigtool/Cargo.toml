@@ -1,0 +1,20 @@
+[package]
+name = "seccom-sigtool"
+description = "Build, sign and verify SecCorp signature database bundles"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "sigtool"
+path = "src/main.rs"
+
+[dependencies]
+seccom-engine.workspace = true
+clap = { version = "4.5", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+hex.workspace = true
+anyhow = "1"

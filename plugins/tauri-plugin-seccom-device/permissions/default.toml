@@ -1,0 +1,14 @@
+[default]
+description = "Default permissions for the SecCorp device plugin"
+permissions = [
+    "allow-get-storage-access",
+    "allow-request-storage-access",
+    "allow-list-installed-apps",
+    "allow-uninstall-app",
+    "allow-open-app-settings",
+    "allow-device-security",
+    "allow-start-protection",
+    "allow-stop-protection",
+    "allow-protection-status",
+    "allow-pick-file",
+]
