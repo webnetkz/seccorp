@@ -87,7 +87,7 @@ try {
   <Properties>
     <DisplayName>SecCorp</DisplayName>
     <PublisherDisplayName>WebNet.kz</PublisherDisplayName>
-    <Description>Local antivirus scanner and device protection.</Description>
+    <Description>Locally analyzes selected files and folders.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   <Resources>
@@ -106,7 +106,7 @@ try {
       uap10:TrustLevel="mediumIL">
       <uap:VisualElements
         DisplayName="SecCorp"
-        Description="Local antivirus scanner and device protection."
+        Description="Local file scanner"
         BackgroundColor="transparent"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Square150x150Logo="Assets\Square150x150Logo.png" />
