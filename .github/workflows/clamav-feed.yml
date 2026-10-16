@@ -53,6 +53,9 @@ jobs:
           if ! grep -q '^DatabaseMirror database.clamav.net$' "$RUNNER_TEMP/freshclam.conf"; then
             printf '\nDatabaseMirror database.clamav.net\n' >> "$RUNNER_TEMP/freshclam.conf"
           fi
+          test -s "$RUNNER_TEMP/freshclam.conf"
+          sed -n '1,12p' "$RUNNER_TEMP/freshclam.conf"
+          freshclam --debug --config-file="$RUNNER_TEMP/freshclam.conf" --version || true
           freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
 
       - name: Validate and sign feed bundle
