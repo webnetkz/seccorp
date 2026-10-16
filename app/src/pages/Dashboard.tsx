@@ -39,10 +39,19 @@ export function Dashboard() {
     );
   }
 
-  const ios = info.platform === "ios";
-  const state = !d.dbReady ? "idle" : d.status;
-  const statusKey = !d.dbReady ? "loading" : d.status;
-  const issues = d.issues.filter((i) => i !== "threats");
+  const onDemandOnly = info.features.onDemandOnly;
+  const issues = d.issues.filter((i) => {
+    if (i === "threats") return false;
+    // On-demand builds cannot monitor the whole device, so an untouched scan
+    // history is expected and must not be presented as a protection warning.
+    if (onDemandOnly && (i === "never_scanned" || i === "no_recent_scan")) return false;
+    if (!info.features.realtime && (i === "realtime_off" || i === "realtime_error")) return false;
+    if (!info.features.networkProtection && (i === "network_off" || i === "network_error" || i === "network_alert")) return false;
+    if (!info.features.fullScan && i === "full_disk_access") return false;
+    return true;
+  });
+  const state = !d.dbReady ? "idle" : d.activeThreats > 0 ? "danger" : issues.length > 0 ? "attention" : onDemandOnly ? "idle" : "protected";
+  const statusKey = !d.dbReady ? "loading" : onDemandOnly && state === "idle" ? "ready" : state;
 
   const fixIssue = async (code: IssueCode) => {
     try {
@@ -64,6 +73,10 @@ export function Dashboard() {
           return;
         case "never_scanned":
         case "no_recent_scan":
+          if (onDemandOnly) {
+            navigate("scan");
+            return;
+          }
           await startScan("quick");
           return;
         case "db_outdated":
@@ -99,6 +112,10 @@ export function Dashboard() {
               <Badge tone="accent" dot>
                 {t("dashboard.scanRunning")}
               </Badge>
+            ) : onDemandOnly ? (
+              <Badge tone="accent" dot>
+                {t("dashboard.onDemand")}
+              </Badge>
             ) : d.realtime.running ? (
               <Badge tone="ok" dot>
                 {t("protection.statusOn")}
@@ -129,7 +146,7 @@ export function Dashboard() {
                 <Button variant="danger" size="lg" icon={<ShieldAlert size={18} />} onClick={() => navigate("threats")}>
                   {t("dashboard.resolveThreats")}
                 </Button>
-              ) : ios ? (
+              ) : onDemandOnly ? (
                 <Button variant="primary" size="lg" icon={<FileSearch size={18} />} onClick={check.start}>
                   {t("dashboard.checkFile")}
                 </Button>
@@ -138,9 +155,9 @@ export function Dashboard() {
                   {t("dashboard.quickScan")}
                 </Button>
               )}
-              {ios ? (
-                <Button size="lg" icon={<ScanSearch size={18} />} onClick={() => startScan("quick")}>
-                  {t("dashboard.quickScan")}
+              {onDemandOnly ? (
+                <Button size="lg" icon={<ScanSearch size={18} />} onClick={() => navigate("scan")}>
+                  {t("dashboard.openScanner")}
                 </Button>
               ) : (
                 <Button size="lg" icon={<ScanSearch size={18} />} onClick={() => (d.status === "danger" ? startScan("quick") : startScan("full"))}>
@@ -174,7 +191,11 @@ export function Dashboard() {
             <ScanSearch size={16} /> {t("dashboard.filesScanned")}
           </div>
           <div className="stat-value">{compact(d.stats.filesScanned, i18n)}</div>
-          <div className="stat-foot">{t("dashboard.checkedRealtime", { n: compact(d.realtime.scanned || d.stats.realtimeScanned, i18n) })}</div>
+          <div className="stat-foot">
+            {info.features.realtime
+              ? t("dashboard.checkedRealtime", { n: compact(d.realtime.scanned || d.stats.realtimeScanned, i18n) })
+              : t("dashboard.onDemand")}
+          </div>
         </Card>
         <Card className="stat">
           <div className="stat-label">
@@ -204,7 +225,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid-2" style={{ marginTop: 16 }}>
-        <Card>
+        {info.features.realtime && <Card>
           <CardHeader
             icon={<Radar size={20} />}
             tone={d.realtime.running ? "ok" : "warn"}
@@ -240,7 +261,7 @@ export function Dashboard() {
               {t("dashboard.configure")} <ArrowRight size={14} />
             </Button>
           </div>
-        </Card>
+        </Card>}
 
         <Card>
           <CardHeader

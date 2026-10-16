@@ -12,6 +12,8 @@ function emit(event: string, payload: unknown) {
 
 const params = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
 const platform = (params.get("platform") as T.Platform) || "windows";
+const macStore = platform === "macos" && params.get("store") === "1";
+const storeBuild = platform === "ios" || macStore;
 const now = () => Math.floor(Date.now() / 1000);
 const uid = () => Math.random().toString(16).slice(2, 14) + Math.random().toString(16).slice(2, 14);
 
@@ -28,30 +30,31 @@ const p = (...parts: string[]) => [home, ...parts].join(sep);
 
 const desktop = platform === "windows" || platform === "macos" || platform === "linux";
 const features: T.Features = {
-  realtime: true,
-  processes: desktop,
-  startupItems: desktop,
+  realtime: platform !== "ios" && !macStore,
+  processes: desktop && !macStore,
+  startupItems: desktop && !macStore,
   installedApps: platform === "android",
   deviceCheck: platform === "android" || platform === "ios",
-  tray: desktop,
-  autostart: desktop,
-  schedule: desktop,
+  tray: desktop && !macStore,
+  autostart: desktop && !macStore,
+  schedule: desktop && !macStore,
   folderPicker: desktop,
   folderBrowser: platform === "android",
-  fullScan: platform !== "ios",
+  fullScan: platform !== "ios" && !macStore,
   storagePermission: platform === "android",
-  fullDiskAccess: platform === "macos",
-  removableMedia: desktop,
-  networkProtection: desktop,
+  fullDiskAccess: platform === "macos" && !macStore,
+  removableMedia: desktop && !macStore,
+  networkProtection: desktop && !macStore,
+  onDemandOnly: platform === "ios" || macStore,
 };
 
 let settings: T.Settings = {
   language: (params.get("lang") as T.Settings["language"]) || "auto",
   theme: (params.get("theme") as T.Settings["theme"]) || "system",
-  realtimeEnabled: platform !== "ios",
-  networkMonitorEnabled: desktop,
-  networkThreatIntel: desktop,
-  networkSpywareHeuristics: desktop,
+  realtimeEnabled: platform !== "ios" && !macStore,
+  networkMonitorEnabled: desktop && !macStore,
+  networkThreatIntel: desktop && !macStore,
+  networkSpywareHeuristics: desktop && !macStore,
   realtimePaths: [],
   autoQuarantine: true,
   notifications: true,
@@ -64,7 +67,7 @@ let settings: T.Settings = {
   schedule: { enabled: true, kind: "quick", frequency: "weekly", weekday: 2, hour: 12, minute: 0, lastRun: 0 },
   launchAtLogin: true,
   startMinimized: true,
-  closeToTray: true,
+  closeToTray: !macStore,
   updateUrl: "https://updates.example.com/seccom/update.json",
   autoUpdate: true,
   scanInstalledApps: true,
@@ -84,44 +87,51 @@ const verdict = (path: string, name: string, v: T.Verdict, kind: T.Detection["ki
   durationMs: 3,
 });
 
-let threats: T.ThreatEntry[] = params.get("threats") === "1"
+let threats: T.ThreatEntry[] = !storeBuild && params.get("threats") === "1"
   ? [{ id: uid(), verdict: verdict(p("Downloads", "invoice.pdf.exe"), "Heur.Filename.DoubleExtension", "suspicious", "heuristic", "Program disguised as a .pdf file"), source: "realtime", detectedAt: now() - 600 }]
   : [];
 
-let quarantine: T.QuarantineItem[] = [
+let quarantine: T.QuarantineItem[] = storeBuild ? [] : [
   { id: uid(), originalPath: p("Downloads", "setup_crack.exe"), fileName: "setup_crack.exe", threat: "Heur.Exe.PackedCode", size: 2_481_152, sha256: uid() + uid(), quarantinedAt: now() - 86400 * 3 },
   { id: uid(), originalPath: p("Downloads", "eicar.com"), fileName: "eicar.com", threat: "EICAR-Test-File", size: 68, sha256: "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f", quarantinedAt: now() - 86400 * 9 },
 ];
 
-let history: T.ScanRecord[] = [
+let history: T.ScanRecord[] = storeBuild ? [] : [
   { id: uid(), kind: "full", startedAt: now() - 86400 * 2 - 3600, finishedAt: now() - 86400 * 2, filesScanned: 284_513, filesCached: 0, filesSkipped: 112, bytesScanned: 186_431_000_000, errors: 37, cancelled: false, threatCount: 1, threats: [verdict(p("Downloads", "setup_crack.exe"), "Heur.Exe.PackedCode", "suspicious", "heuristic", "Code section is compressed or encrypted")], roots: [platform === "windows" ? "C:\\" : "/"], limited: false },
   { id: uid(), kind: "quick", startedAt: now() - 86400 * 9 - 120, finishedAt: now() - 86400 * 9, filesScanned: 12_904, filesCached: 0, filesSkipped: 3, bytesScanned: 9_200_000_000, errors: 0, cancelled: false, threatCount: 1, threats: [verdict(p("Downloads", "eicar.com"), "EICAR-Test-File", "malicious", "hash", "Known malicious file (SHA256 match)")], roots: [p("Downloads")], limited: false },
 ];
 
 let stats: T.Stats = {
-  filesScanned: 1_284_113,
-  threatsFound: 3,
-  threatsNeutralized: 2,
-  scansCompleted: 14,
-  realtimeScanned: 5_210,
-  lastScanAt: now() - 86400 * 2,
-  lastFullScanAt: now() - 86400 * 2,
-  installedAt: now() - 86400 * 40,
+  filesScanned: storeBuild ? 0 : 1_284_113,
+  threatsFound: storeBuild ? 0 : 3,
+  threatsNeutralized: storeBuild ? 0 : 2,
+  scansCompleted: storeBuild ? 0 : 14,
+  realtimeScanned: storeBuild ? 0 : 5_210,
+  lastScanAt: storeBuild ? null : now() - 86400 * 2,
+  lastFullScanAt: storeBuild ? null : now() - 86400 * 2,
+  installedAt: now(),
 };
 
 const db: T.DbInfo = {
-  version: "2026.10.13.1",
-  released: now() - 3600 * 5,
+  version: "2026.10.16.1",
+  released: 1792108800,
   loadedAt: now(),
-  hashSignatures: 3_412_870,
-  bodySignatures: 128_446,
-  rules: 812,
-  skipped: 1_204,
+  hashSignatures: storeBuild ? 3 : 3_412_870,
+  bodySignatures: storeBuild ? 0 : 128_446,
+  rules: storeBuild ? 2 : 812,
+  skipped: storeBuild ? 0 : 1_204,
   sources: [
     { name: "SecCorp built-in", kind: "builtin", signatures: 3, skipped: 0 },
-    { name: "main.cvd (v62)", kind: "clamav-cvd", signatures: 3_380_000, skipped: 900 },
-    { name: "malwarebazaar.csv", kind: "hash-list", signatures: 32_870, skipped: 0 },
-    { name: "rules.yar", kind: "yara", signatures: 812, skipped: 0 },
+    ...(storeBuild
+      ? [
+          { name: "custom-test.hsb", kind: "clamav-hash", signatures: 1, skipped: 0 },
+          { name: "custom-test.yar", kind: "yara", signatures: 1, skipped: 0 },
+        ]
+      : [
+          { name: "main.cvd (v62)", kind: "clamav-cvd", signatures: 3_380_000, skipped: 900 },
+          { name: "malwarebazaar.csv", kind: "hash-list", signatures: 32_870, skipped: 0 },
+          { name: "rules.yar", kind: "yara", signatures: 812, skipped: 0 },
+        ]),
   ],
   warnings: [],
 };
@@ -323,7 +333,7 @@ const apps: T.AppReport[] = [
 ];
 
 const handlers: Record<string, (a: Record<string, unknown>) => unknown> = {
-  app_info: () => ({ version: "1.0.0", engineVersion: "1.0.0", platform, arch: "aarch64", features, updateConfigured: true, updateMode: "signed", dataDir: p(".seccom") }),
+  app_info: () => ({ version: "1.0.0", engineVersion: "1.0.0", platform, arch: "aarch64", features, updateConfigured: !storeBuild, updateMode: storeBuild ? "none" : "signed", dataDir: p(".seccom") }),
   get_dashboard: () => dashboard(),
   get_settings: () => settings,
   save_settings: (a) => {
@@ -409,7 +419,7 @@ const handlers: Record<string, (a: Record<string, unknown>) => unknown> = {
   check_updates: () => ({ configured: true, available: false, current: db.version, latest: db.version, released: db.released, size: 48_000_000, notes: null, checkedAt: now() }),
   apply_update: () => db,
   import_signatures: () => db,
-  list_user_signatures: () => [
+  list_user_signatures: () => storeBuild ? [] : [
     { name: "company-rules.yar", size: 18_204, modified: now() - 86400 * 4 },
     { name: "malwarebazaar.csv", size: 4_200_311, modified: now() - 86400 },
   ],

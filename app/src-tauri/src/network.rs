@@ -19,6 +19,10 @@ const MONITOR_INTERVAL: Duration = Duration::from_secs(30);
 const MAX_CONNECTIONS: usize = 2_000;
 const MAX_ALERTS: usize = 200;
 
+fn supported() -> bool {
+    cfg!(desktop) && !cfg!(all(target_os = "macos", feature = "mac-app-store"))
+}
+
 pub struct NetworkProtection {
     snapshot: Mutex<NetworkStatus>,
     stop: Mutex<Option<Arc<AtomicBool>>>,
@@ -30,8 +34,8 @@ impl Default for NetworkProtection {
     fn default() -> Self {
         Self {
             snapshot: Mutex::new(NetworkStatus {
-                supported: cfg!(desktop),
-                enabled: cfg!(desktop),
+                supported: supported(),
+                enabled: supported(),
                 running: false,
                 scanning: false,
                 last_scan_at: None,
@@ -53,8 +57,8 @@ impl Default for NetworkProtection {
 pub fn status(app: &AppHandle) -> NetworkStatus {
     let state = app.state::<AppState>();
     let mut result = state.network.snapshot.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    result.supported = cfg!(desktop);
-    result.enabled = cfg!(desktop) && state.settings().network_monitor_enabled;
+    result.supported = supported();
+    result.enabled = supported() && state.settings().network_monitor_enabled;
     result.scanning = state.network.scanning.load(Ordering::Relaxed);
     result
 }
@@ -66,10 +70,10 @@ pub fn apply(app: &AppHandle) {
         old.store(true, Ordering::Relaxed);
     }
 
-    let enabled = cfg!(desktop) && state.settings().network_monitor_enabled;
+    let enabled = supported() && state.settings().network_monitor_enabled;
     {
         let mut snapshot = state.network.snapshot.lock().unwrap_or_else(|e| e.into_inner());
-        snapshot.supported = cfg!(desktop);
+        snapshot.supported = supported();
         snapshot.enabled = enabled;
         snapshot.running = enabled;
         if !enabled {

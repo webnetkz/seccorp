@@ -107,6 +107,11 @@ powershell -ExecutionPolicy Bypass -File build\windows\build.ps1 -Arch both # + 
 `APPLE_ID` + `APPLE_PASSWORD` (пароль приложения) + `APPLE_TEAM_ID` или ключ API
 (`APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_PATH`) — Tauri нотаризирует сборку сам.
 
+Для Mac App Store используйте отдельную sandbox-сборку: `build/macos/appstore.sh`.
+Ей нужны Mac App Distribution и Mac Installer Distribution сертификаты, а также
+профиль `app/src-tauri/macos/SecCorp-AppStore.provisionprofile`; профиль не хранится в Git.
+Сборка доступна только для выбранных пользователем файлов и папок.
+
 ### Android
 
 ```bash
@@ -153,7 +158,7 @@ npm run dev                # только интерфейс в браузере
 Интерфейс в браузере работает на демо-бэкенде. Параметры адреса позволяют посмотреть любую платформу:
 `http://localhost:1420/?platform=android&lang=ru&theme=dark` (также `ios`, `macos`, `windows`;
 `&threats=1` — с файловыми угрозами, `&networkThreat=1` — с сетевой угрозой,
-`&onboarding=1` — первый запуск).
+`&onboarding=1` — первый запуск, `&platform=macos&store=1` — sandbox-вариант для Mac App Store).
 
 Тесты и проверки:
 
@@ -223,9 +228,10 @@ FreshClam и подхватывает официальные базы ClamAV и�
   подписанного Microsoft, а регистрация в «Безопасности Windows» вместо Defender — участия
   в программе Microsoft Virus Initiative. В проект это не входит; SecCorp работает рядом с Defender.
 - **macOS.** Аналогично: защита работает через FSEvents. Блокировка «до открытия» возможна только через
-  Endpoint Security, для которой Apple выдаёт отдельное разрешение (entitlement) по заявке. Приложение
-  распространяется вне Mac App Store (Developer ID + нотаризация), так как песочница App Store
-  не позволит проверять весь диск.
+  Endpoint Security, для которой Apple выдаёт отдельное разрешение (entitlement) по заявке. Прямая
+  версия распространяется с Developer ID и нотаризацией и поддерживает полную защиту. Отдельная
+  sandbox-сборка для Mac App Store (`--features mac-app-store`) проверяет только явно выбранные
+  пользователем файлы и папки; мониторинг всего диска, сети и носителей в ней отключён.
 - **Android.** Для полной проверки памяти и списка приложений нужны разрешения «Доступ ко всем файлам»
   и QUERY_ALL_PACKAGES. Google Play разрешает их антивирусам, но в Play Console нужно заполнить
   декларации, а для фоновой службы (`specialUse`) — описать её назначение. Удалить приложение

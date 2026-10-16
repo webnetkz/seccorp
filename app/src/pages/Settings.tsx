@@ -177,21 +177,23 @@ export function SettingsPage() {
             </Setting>
           </Card>
 
-          <Card>
-            <CardHeader icon={<KeyRound size={20} />} title={t("settings.updates")} />
-            <div className="stack-sm">
-              <div className="metric-label">{t("settings.updateUrl")}</div>
-              <input
-                className="input selectable mono"
-                defaultValue={settings.updateUrl}
-                placeholder="https://updates.example.com/seccom/update.json"
-                onBlur={(e) => e.target.value !== settings.updateUrl && updateSettings({ updateUrl: e.target.value })}
-              />
-            </div>
-            <Setting title={t("settings.autoUpdate")}>
-              <Toggle on={settings.autoUpdate} onChange={(v) => updateSettings({ autoUpdate: v })} />
-            </Setting>
-          </Card>
+          {!f.onDemandOnly && (
+            <Card>
+              <CardHeader icon={<KeyRound size={20} />} title={t("settings.updates")} />
+              <div className="stack-sm">
+                <div className="metric-label">{t("settings.updateUrl")}</div>
+                <input
+                  className="input selectable mono"
+                  defaultValue={settings.updateUrl}
+                  placeholder="https://updates.example.com/seccom/update.json"
+                  onBlur={(e) => e.target.value !== settings.updateUrl && updateSettings({ updateUrl: e.target.value })}
+                />
+              </div>
+              <Setting title={t("settings.autoUpdate")}>
+                <Toggle on={settings.autoUpdate} onChange={(v) => updateSettings({ autoUpdate: v })} />
+              </Setting>
+            </Card>
+          )}
 
           {(f.storagePermission || f.fullDiskAccess || isTauri) && (
             <Card>

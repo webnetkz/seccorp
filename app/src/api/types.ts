@@ -22,6 +22,7 @@ export interface Features {
   fullDiskAccess: boolean;
   removableMedia: boolean;
   networkProtection: boolean;
+  onDemandOnly: boolean;
 }
 
 export interface AppInfo {

@@ -48,22 +48,24 @@ pub fn features() -> Features {
     let desktop = cfg!(desktop);
     let android = cfg!(target_os = "android");
     let ios = cfg!(target_os = "ios");
+    let mac_store = cfg!(all(target_os = "macos", feature = "mac-app-store"));
     Features {
-        realtime: true,
-        processes: desktop,
-        startup_items: cfg!(any(target_os = "windows", target_os = "macos", target_os = "linux")),
+        realtime: !ios && !mac_store,
+        processes: desktop && !mac_store,
+        startup_items: cfg!(any(target_os = "windows", target_os = "macos", target_os = "linux")) && !mac_store,
         installed_apps: android,
         device_check: android || ios,
-        tray: desktop,
-        autostart: desktop,
-        schedule: desktop,
+        tray: desktop && !mac_store,
+        autostart: desktop && !mac_store,
+        schedule: desktop && !mac_store,
         folder_picker: desktop,
         folder_browser: android,
-        full_scan: !ios,
+        full_scan: !ios && !mac_store,
         storage_permission: android,
-        full_disk_access: cfg!(target_os = "macos"),
-        removable_media: desktop,
-        network_protection: desktop,
+        full_disk_access: cfg!(target_os = "macos") && !mac_store,
+        removable_media: desktop && !mac_store,
+        network_protection: desktop && !mac_store,
+        on_demand_only: ios || mac_store,
     }
 }
 
@@ -130,6 +132,9 @@ pub fn system_signature_dirs() -> Vec<PathBuf> {
 
 /// macOS: true when Full Disk Access seems to be missing.
 pub fn needs_full_disk_access<R: Runtime>(app: &AppHandle<R>) -> bool {
+    if cfg!(feature = "mac-app-store") {
+        return false;
+    }
     #[cfg(target_os = "macos")]
     {
         return macos::needs_full_disk_access(home(app).as_deref());
@@ -145,6 +150,9 @@ pub fn needs_full_disk_access<R: Runtime>(app: &AppHandle<R>) -> bool {
 /// without Full Disk Access these are skipped instead of triggering a consent
 /// prompt per folder. Empty when access is granted and on other platforms.
 pub fn locked_dirs<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
+    if cfg!(feature = "mac-app-store") {
+        return Vec::new();
+    }
     #[cfg(target_os = "macos")]
     {
         let home = home(app);

@@ -162,7 +162,7 @@ export function SignaturesPage() {
           <CardHeader
             icon={<CloudDownload size={20} />}
             title={t("settings.updates")}
-            sub={t(info.updateMode === "freshclam" ? "signatures.freshclam" : "signatures.signed")}
+          sub={info.updateConfigured ? t(info.updateMode === "freshclam" ? "signatures.freshclam" : "signatures.signed") : t("signatures.builtin")}
           />
           {!info.updateConfigured ? (
             <div className="callout">
@@ -205,7 +205,7 @@ export function SignaturesPage() {
               {check && <div className="faint" style={{ fontSize: 12 }}>{t("signatures.lastChecked", { date: dateTime(check.checkedAt, i18n) })}</div>}
             </div>
           )}
-          {settings && (
+          {settings && info.updateConfigured && (
             <>
               <div className="divider" />
               <Setting title={t("settings.autoUpdate")} desc={t("signatures.autoUpdateDesc")}>

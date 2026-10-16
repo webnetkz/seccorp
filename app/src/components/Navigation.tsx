@@ -34,7 +34,7 @@ function useItems() {
     { route: "dashboard", label: t("nav.dashboard"), icon: <House size={19} /> },
     ...(threats > 0 ? [{ route: "threats" as Route, label: t("nav.threats"), icon: <ShieldAlert size={19} />, badge: threats }] : []),
     { route: "scan", label: t("nav.scan"), icon: <ScanSearch size={19} />, dot: scan.running },
-    { route: "protection", label: t("nav.protection"), icon: <Radar size={19} /> },
+    ...(f?.realtime ? [{ route: "protection" as Route, label: t("nav.protection"), icon: <Radar size={19} /> }] : []),
     ...(f?.networkProtection ? [{ route: "network" as Route, label: t("nav.network"), icon: <Network size={19} /> }] : []),
     ...(f?.installedApps ? [{ route: "apps" as Route, label: t("nav.apps"), icon: <LayoutGrid size={19} /> }] : []),
     ...(f?.deviceCheck ? [{ route: "device" as Route, label: t("nav.device"), icon: <Smartphone size={19} /> }] : []),
@@ -69,7 +69,7 @@ export function Sidebar() {
         <img className="brand-logo" src="/icon.svg" alt="" />
         <div>
           <div className="brand-name">SecCorp</div>
-          <div className="brand-sub">{info?.platform === "ios" ? t("app.taglineIos") : t("app.tagline")}</div>
+          <div className="brand-sub">{info?.features.onDemandOnly ? t("app.taglineIos") : t("app.tagline")}</div>
         </div>
       </div>
       <nav className="nav">
@@ -81,7 +81,7 @@ export function Sidebar() {
           <NavButton key={i.route} item={i} active={route === i.route} onClick={() => navigate(i.route)} />
         ))}
       </nav>
-      {rt && (
+      {rt && info?.features.realtime && (
         <div className="sidebar-footer">
           <div className="row">
             {rt.running ? <ShieldCheck size={16} color="var(--ok)" /> : <ShieldAlert size={16} color="var(--warn)" />}
@@ -103,12 +103,22 @@ export function BottomNav() {
   const [more, setMore] = useState(false);
   const f = info?.features;
 
-  const primary: Item[] = [
-    main.find((i) => i.route === "dashboard")!,
-    { ...main.find((i) => i.route === "scan")!, badge: threats || undefined },
-    main.find((i) => i.route === "protection")!,
-    f?.installedApps ? main.find((i) => i.route === "apps")! : main.find((i) => i.route === "quarantine")!,
-  ];
+  const dashboardItem = main.find((i) => i.route === "dashboard");
+  const scanItem = main.find((i) => i.route === "scan");
+  const contextItem = f?.realtime
+    ? main.find((i) => i.route === "protection")
+    : f?.deviceCheck
+      ? main.find((i) => i.route === "device")
+      : tools.find((i) => i.route === "signatures");
+  const libraryItem = f?.installedApps
+    ? main.find((i) => i.route === "apps")
+    : main.find((i) => i.route === "quarantine");
+  const primary = [
+    dashboardItem,
+    scanItem ? { ...scanItem, badge: threats || undefined } : undefined,
+    contextItem,
+    libraryItem,
+  ].filter((item): item is Item => item !== undefined);
   const primaryRoutes = new Set(primary.map((i) => i.route));
   const rest = [...main, ...tools].filter((i) => !primaryRoutes.has(i.route) && i.route !== "threats");
   const moreActive = rest.some((i) => i.route === route);

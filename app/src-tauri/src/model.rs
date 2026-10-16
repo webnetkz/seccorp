@@ -33,6 +33,8 @@ pub struct Features {
     pub removable_media: bool,
     /// Desktop can inspect local sockets and correlate them with processes.
     pub network_protection: bool,
+    /// Store sandbox limits scanning to files/folders explicitly selected by the user.
+    pub on_demand_only: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
