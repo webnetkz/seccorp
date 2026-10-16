@@ -42,19 +42,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes clamav-freshclam
           mkdir -p /tmp/clamav-db
-          conf_sample=/usr/share/doc/clamav-freshclam/examples/freshclam.conf.sample
-          if [ -f "$conf_sample" ]; then
-            cp "$conf_sample" "$RUNNER_TEMP/freshclam.conf"
-          else
-            clamconf -g freshclam.conf > "$RUNNER_TEMP/freshclam.conf"
-          fi
-          # Sample configs deliberately contain the invalid sentinel directive.
-          sed -i '/^Example$/d' "$RUNNER_TEMP/freshclam.conf"
-          if ! grep -q '^DatabaseMirror database.clamav.net$' "$RUNNER_TEMP/freshclam.conf"; then
-            printf '\nDatabaseMirror database.clamav.net\n' >> "$RUNNER_TEMP/freshclam.conf"
-          fi
-          test -s "$RUNNER_TEMP/freshclam.conf"
-          sed -n '1,12p' "$RUNNER_TEMP/freshclam.conf"
+          printf '%s\n' 'DatabaseMirror database.clamav.net' > "$RUNNER_TEMP/freshclam.conf"
           freshclam --debug --config-file="$RUNNER_TEMP/freshclam.conf" --version || true
           freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
 
