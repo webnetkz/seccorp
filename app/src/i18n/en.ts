@@ -380,9 +380,11 @@ export const en: typeof ru = {
     userFiles: "User databases",
     noUserFiles: "No user databases",
     warnings: "Warnings ({n})",
+    skippedFormats: "skipped: {n}",
     reload: "Reload databases",
     signed: "Updates are verified with an Ed25519 digital signature",
     freshclam: "Official ClamAV databases are downloaded and verified by FreshClam",
+    clamavLimits: "SecCorp uses only the ClamAV formats it supports. Logical, PE-section, phishing, and bytecode signatures are skipped; this is not equivalent to ClamAV Scanner.",
     builtin: "built-in",
   },
   settings: {

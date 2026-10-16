@@ -62,9 +62,60 @@ $Assets = Join-Path $Layout "Assets"
 $BundledDb = Join-Path $Layout "databases\bundled"
 $OutDir = Join-Path $Root "dist-release\windows\store"
 $Output = Join-Path $OutDir "SecCorp_${StoreVersion}_${Architecture}.msix"
+$ClamAvVersion = "1.5.4"
+$ClamAvBaseUrl = "https://github.com/Cisco-Talos/clamav/releases/download/clamav-$ClamAvVersion"
+$ClamAvSourceName = "clamav-$ClamAvVersion.tar.gz"
+$ClamAvSourceSha256 = "1af1117a228f1b5bc7fa91a0dabc37848a99e7d25188e9be8043332ce721dfd3"
+if ($Architecture -eq "x64") {
+  $ClamAvArchiveName = "clamav-$ClamAvVersion.win.x64.zip"
+  $ClamAvArchiveSha256 = "0d9e0228b2674137ea1a2853566c98a0278ad52ab2582c3d6dbd75373848c395"
+} else {
+  $ClamAvArchiveName = "clamav-$ClamAvVersion.win.arm64.zip"
+  $ClamAvArchiveSha256 = "21ec99e522435258e5fe2ef1b6345375a94748c83e4e1561c53d5b3842cf9c00"
+}
+$VendorDir = Join-Path $TempRoot "vendor"
+$ClamAvExtractDir = Join-Path $VendorDir "clamav-$ClamAvVersion.win.$Architecture"
+$ClamAvArchive = Join-Path $VendorDir $ClamAvArchiveName
+$ClamAvSourceArchive = Join-Path $VendorDir $ClamAvSourceName
 
 try {
-  New-Item -ItemType Directory -Force -Path $Assets, $BundledDb, $OutDir | Out-Null
+  New-Item -ItemType Directory -Force -Path $Assets, $BundledDb, $OutDir, $VendorDir,
+    (Join-Path $Layout "clamav"), (Join-Path $Layout "Legal\clamav") | Out-Null
+
+  # Pin and verify the official ClamAV portable package and corresponding source.
+  Invoke-WebRequest -Uri "$ClamAvBaseUrl/$ClamAvArchiveName" -OutFile $ClamAvArchive
+  $ActualClamAvSha256 = (Get-FileHash -Algorithm SHA256 $ClamAvArchive).Hash.ToLowerInvariant()
+  if ($ActualClamAvSha256 -ne $ClamAvArchiveSha256) {
+    throw "ClamAV $ClamAvVersion binary archive SHA-256 mismatch: $ActualClamAvSha256"
+  }
+  Invoke-WebRequest -Uri "$ClamAvBaseUrl/$ClamAvSourceName" -OutFile $ClamAvSourceArchive
+  $ActualSourceSha256 = (Get-FileHash -Algorithm SHA256 $ClamAvSourceArchive).Hash.ToLowerInvariant()
+  if ($ActualSourceSha256 -ne $ClamAvSourceSha256) {
+    throw "ClamAV $ClamAvVersion source archive SHA-256 mismatch: $ActualSourceSha256"
+  }
+  Expand-Archive -LiteralPath $ClamAvArchive -DestinationPath $VendorDir
+
+  $ClamAvLayout = Join-Path $Layout "clamav"
+  $ClamAvLegal = Join-Path $Layout "Legal\clamav"
+  $ClamAvCerts = Join-Path $ClamAvLayout "certs"
+  $ClamAvLicenseDir = Join-Path $ClamAvLegal "COPYING"
+  $ClamAvPayload = Get-ChildItem -LiteralPath $ClamAvExtractDir -File |
+    Where-Object { $_.Extension -ieq ".dll" -or $_.Name -ieq "freshclam.exe" }
+  if (-not ($ClamAvPayload | Where-Object { $_.Name -ieq "freshclam.exe" })) {
+    throw "FreshClam executable was not found in the verified ClamAV archive."
+  }
+  foreach ($File in $ClamAvPayload) {
+    Copy-Item -LiteralPath $File.FullName -Destination $ClamAvLayout
+  }
+  New-Item -ItemType Directory -Force -Path $ClamAvCerts, $ClamAvLicenseDir | Out-Null
+  Get-ChildItem -LiteralPath (Join-Path $ClamAvExtractDir "certs") -File |
+    Copy-Item -Destination $ClamAvCerts
+  Get-ChildItem -LiteralPath (Join-Path $ClamAvExtractDir "COPYING") -File |
+    Copy-Item -Destination $ClamAvLicenseDir
+  Copy-Item -LiteralPath (Join-Path $ClamAvExtractDir "COPYING.txt") -Destination $ClamAvLegal
+  Copy-Item -LiteralPath $ClamAvSourceArchive -Destination $ClamAvLegal
+  Copy-Item -LiteralPath (Join-Path $Root "build\windows\THIRD-PARTY-NOTICES.txt") -Destination (Join-Path $Layout "Legal\ThirdPartyNotices.txt")
+
   Copy-Item $Binary (Join-Path $Layout "SecCorp.exe")
   Copy-Item (Join-Path $Root "app\src-tauri\icons\StoreLogo.png") $Assets
   Copy-Item (Join-Path $Root "app\src-tauri\icons\Square44x44Logo.png") $Assets
@@ -133,6 +184,17 @@ try {
       $Identity.Version -ne $StoreVersion -or
       $Identity.ProcessorArchitecture -ne $Architecture) {
     throw "The packaged Store identity does not match Partner Center."
+  }
+  foreach ($RequiredFile in @(
+    "clamav\freshclam.exe",
+    "clamav\certs\clamav.crt",
+    "Legal\ThirdPartyNotices.txt",
+    "Legal\clamav\COPYING.txt",
+    "Legal\clamav\clamav-$ClamAvVersion.tar.gz"
+  )) {
+    if (-not (Test-Path (Join-Path $Inspect $RequiredFile))) {
+      throw "Store MSIX is missing required FreshClam or license content: $RequiredFile"
+    }
   }
 
   $Hash = (Get-FileHash -Algorithm SHA256 $Output).Hash.ToLowerInvariant()

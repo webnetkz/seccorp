@@ -378,9 +378,11 @@ export const ru = {
     userFiles: "Пользовательские базы",
     noUserFiles: "Пользовательских баз нет",
     warnings: "Предупреждения ({n})",
+    skippedFormats: "пропущено: {n}",
     reload: "Перезагрузить базы",
     signed: "Обновления проверяются по цифровой подписи Ed25519",
     freshclam: "Официальные базы ClamAV загружаются и проверяются через FreshClam",
+    clamavLimits: "SecCorp использует только поддерживаемые форматы ClamAV. Логические, PE-секционные, фишинговые и bytecode-сигнатуры пропускаются; это не эквивалент ClamAV Scanner.",
     builtin: "встроенные",
   },
   settings: {

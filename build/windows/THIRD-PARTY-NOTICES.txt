@@ -1,0 +1,21 @@
+Third-party software notices
+============================
+
+ClamAV FreshClam 1.5.4
+-----------------------
+
+This SecCorp Windows package includes the standalone FreshClam updater and
+required runtime DLLs from Cisco-Talos ClamAV 1.5.4. ClamAV is licensed under
+GNU General Public License version 2 (GPL-2.0-only), except for components
+identified separately in Legal/clamav/COPYING. The corresponding ClamAV source
+archive is included at Legal/clamav/clamav-1.5.4.tar.gz. License texts from the
+upstream Windows distribution are included in Legal/clamav/COPYING and
+Legal/clamav/COPYING.txt.
+
+Upstream project and source:
+https://github.com/Cisco-Talos/clamav/releases/tag/clamav-1.5.4
+
+FreshClam downloads and verifies ClamAV databases directly from the official
+ClamAV database mirror. The databases themselves are not bundled with this
+package. SecCorp currently parses only a subset of ClamAV signature formats;
+see the app's Signature Database page for the supported-format limitation.

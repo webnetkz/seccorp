@@ -30,6 +30,8 @@ pub struct Paths {
     #[cfg_attr(not(feature = "online-update"), allow(dead_code))]
     pub db_root: PathBuf,
     pub db_current: PathBuf,
+    /// ClamAV databases downloaded by FreshClam into SecCorp's private data area.
+    pub db_freshclam: PathBuf,
     pub db_user: PathBuf,
     pub quarantine: PathBuf,
     pub settings: PathBuf,
@@ -50,6 +52,7 @@ impl Paths {
         Paths {
             db_bundled: None,
             db_current: db_root.join("current"),
+            db_freshclam: db_root.join("freshclam"),
             db_user: db_root.join("user"),
             db_root,
             quarantine: data.join("quarantine"),
@@ -71,6 +74,7 @@ impl Paths {
             dirs.push(bundled.clone());
         }
         dirs.push(self.db_current.clone());
+        dirs.push(self.db_freshclam.clone());
         dirs.push(self.db_user.clone());
         dirs.extend(crate::platform::system_signature_dirs());
         dirs

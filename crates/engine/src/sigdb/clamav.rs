@@ -271,5 +271,35 @@ mod tests {
         assert_eq!(hdr.version, 27000);
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].0, "test.hdb");
+
+        let mut loader = crate::sigdb::DbLoader::new(false);
+        loader.add_bytes("daily.cvd", &cvd).unwrap();
+        let db = loader.build();
+        assert_eq!(db.info().version, "clamav-27000");
+        assert_eq!(db.info().hash_signatures, 1);
+
+        let mut bundled_loader = crate::sigdb::DbLoader::new(false);
+        let bundled_manifest = serde_json::to_vec(&crate::sigdb::DbManifest {
+            name: "SecCorp bundled signatures".into(),
+            version: "2026.10.16.1".into(),
+            released: 1,
+            min_engine: None,
+        })
+        .unwrap();
+        bundled_loader.add_bytes("manifest.json", &bundled_manifest).unwrap();
+        bundled_loader.add_bytes("daily.cvd", &cvd).unwrap();
+        assert_eq!(bundled_loader.build().info().version, "clamav-27000");
+
+        let mut signed_loader = crate::sigdb::DbLoader::new(false);
+        let signed_manifest = serde_json::to_vec(&crate::sigdb::DbManifest {
+            name: "SecCorp signatures".into(),
+            version: "2026.10.16.2".into(),
+            released: 1,
+            min_engine: None,
+        })
+        .unwrap();
+        signed_loader.add_bytes("manifest.json", &signed_manifest).unwrap();
+        signed_loader.add_bytes("daily.cvd", &cvd).unwrap();
+        assert_eq!(signed_loader.build().info().version, "2026.10.16.2");
     }
 }

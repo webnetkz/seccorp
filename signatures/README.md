@@ -54,8 +54,10 @@ cargo run -p seccom-sigtool -- verify \
 
 ## Готовые открытые базы
 
-- **ClamAV**: файлы `main.cvd` и `daily.cvd` с database.clamav.net можно положить
-  в `base/` или импортировать в приложении («Базы → Импорт»). Базы ClamAV
-  распространяются под GPL — учитывайте это, если включаете их в свой продукт.
+- **ClamAV**: Microsoft Store-сборка включает FreshClam и загружает официальные базы
+  напрямую с зеркала ClamAV после установки; сами базы в пакет SecCorp не включаются.
+  Не размещайте и не распространяйте CVD от имени SecCorp без проверки условий их
+  использования. Лицензия ClamAV-программы — GPL-2.0; подробности по включённому
+  FreshClam и исходникам приведены в `build/windows/THIRD-PARTY-NOTICES.txt`.
 - **MalwareBazaar** (abuse.ch): CSV-экспорт хэшей, ссылки на экспорт —
   на странице bazaar.abuse.ch/export. Для API abuse.ch нужен бесплатный Auth-Key.

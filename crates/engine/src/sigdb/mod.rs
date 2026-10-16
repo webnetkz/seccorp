@@ -190,6 +190,7 @@ pub struct DbLoader {
     body_sigs: Vec<BodySignature>,
     rule_sources: Vec<(String, String)>,
     ignored: HashSet<String>,
+    bundled_manifest_version: bool,
     info: DbInfo,
 }
 
@@ -200,6 +201,7 @@ impl DbLoader {
             body_sigs: Vec::new(),
             rule_sources: Vec::new(),
             ignored: HashSet::new(),
+            bundled_manifest_version: false,
             info: DbInfo { version: format!("builtin-{}", crate::ENGINE_VERSION), ..Default::default() },
         };
         if include_builtin {
@@ -270,6 +272,7 @@ impl DbLoader {
                     if !m.version.is_empty() {
                         self.info.version = m.version;
                         self.info.released = m.released;
+                        self.bundled_manifest_version = m.name.eq_ignore_ascii_case("SecCorp bundled signatures");
                     }
                 }
             }
@@ -286,6 +289,15 @@ impl DbLoader {
             }
             "cvd" | "cld" | "cud" => {
                 let (header, files) = clamav::unpack_cvd(bytes)?;
+                let prior_clamav_version = self.info.version.strip_prefix("clamav-").and_then(|v| v.parse::<u64>().ok());
+                if self.info.version.starts_with("builtin-")
+                    || self.bundled_manifest_version
+                    || prior_clamav_version.is_some_and(|v| header.version > v)
+                {
+                    self.info.version = format!("clamav-{}", header.version);
+                    self.info.released = 0;
+                    self.bundled_manifest_version = false;
+                }
                 // Process ignore lists first.
                 let mut files = files;
                 files.sort_by_key(|(n, _)| !matches!(extension(n).as_str(), "ign" | "ign2"));
@@ -313,9 +325,27 @@ impl DbLoader {
                 let source = short.rsplit_once('.').map(|(s, _)| s).unwrap_or(&short).to_string();
                 record(&mut self.info, "hash-list", hashlist::parse_hash_list(&text(), &source, &mut self.hashes))
             }
-            // Recognised ClamAV formats we do not implement.
+            // Recognised ClamAV formats we do not implement. Count text rules
+            // as skipped entries; binary databases are reported as one skipped
+            // source because their internal rule count is not available here.
             "ldb" | "ldu" | "mdb" | "mdu" | "msb" | "msu" | "cdb" | "pdb" | "gdb" | "wdb" | "ftm" | "idb" | "crb" | "cbc" | "hdbx"
-            | "imp" | "pwdb" | "info" | "cfg" | "sign" => {}
+            | "imp" | "pwdb" | "info" | "cfg" | "sign" => {
+                let skipped = if matches!(ext.as_str(), "cbc" | "crb" | "hdbx" | "pwdb" | "sign") {
+                    1
+                } else {
+                    text()
+                        .lines()
+                        .filter(|line| {
+                            let line = line.trim();
+                            !line.is_empty() && !line.starts_with('#')
+                        })
+                        .count() as u64
+                };
+                if skipped > 0 {
+                    self.info.skipped += skipped;
+                    self.info.sources.push(SourceInfo { name: short.clone(), kind: "unsupported-format".into(), signatures: 0, skipped });
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -429,5 +459,15 @@ mod tests {
         assert_eq!(db.scan_rules(b"xx marker-123", 13, &ctx)[0].name, "Custom");
         let h = hash_bytes(b"bad file", false, false);
         assert_eq!(db.lookup_hash(&h, 8).unwrap().name, "Bad.File");
+    }
+
+    #[test]
+    fn counts_unsupported_clamav_rules() {
+        let mut loader = DbLoader::new(false);
+        loader.add_bytes("daily.ldb", b"Rule.One:Target:0:deadbeef\n# comment\nRule.Two:Target:0:cafebabe\n").unwrap();
+        let db = loader.build();
+        assert_eq!(db.info().skipped, 2);
+        assert_eq!(db.info().sources[0].kind, "unsupported-format");
+        assert_eq!(db.info().sources[0].skipped, 2);
     }
 }

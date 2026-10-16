@@ -22,7 +22,19 @@ fn signed_configured(state: &AppState) -> bool {
 }
 
 #[cfg(desktop)]
+fn bundled_freshclam_executable() -> Option<std::path::PathBuf> {
+    if !cfg!(windows) {
+        return None;
+    }
+    let executable = std::env::current_exe().ok()?.parent()?.join("clamav").join("freshclam.exe");
+    executable.is_file().then_some(executable)
+}
+
+#[cfg(desktop)]
 fn freshclam_executable() -> Option<std::path::PathBuf> {
+    if let Some(executable) = bundled_freshclam_executable() {
+        return Some(executable);
+    }
     let executable = if cfg!(windows) { "freshclam.exe" } else { "freshclam" };
     let mut candidates = std::env::var_os("PATH")
         .map(|path| std::env::split_paths(&path).map(|dir| dir.join(executable)).collect::<Vec<_>>())
@@ -102,6 +114,7 @@ pub fn check<R: Runtime>(app: &AppHandle<R>) -> Result<UpdateCheck, String> {
         let url = state.settings().update_url;
         let index = fetch_index(&url)?;
         let available = current.starts_with("builtin-")
+            || current.starts_with("clamav-")
             || seccom_engine::update::compare_versions(&index.version, &current) == std::cmp::Ordering::Greater;
         let check = UpdateCheck {
             configured: true,
@@ -155,10 +168,23 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>) -> Result<seccom_engine::DbInfo, St
 fn refresh_freshclam<R: Runtime>(app: &AppHandle<R>, state: &AppState) -> Result<seccom_engine::DbInfo, String> {
     let executable = freshclam_executable().ok_or_else(|| "FreshClam is not installed".to_string())?;
     emit(app, "checking", 0, 0, None);
-    let output = std::process::Command::new(&executable)
-        .args(["--stdout", "--quiet", "--no-warnings"])
-        .output()
-        .map_err(|e| format!("cannot start {}: {e}", executable.display()))?;
+    let bundled = bundled_freshclam_executable().as_deref() == Some(executable.as_path());
+    let mut command = std::process::Command::new(&executable);
+    command.args(["--stdout", "--quiet", "--no-warnings"]);
+    if bundled {
+        // Keep Store updates inside SecCorp's writable app-data directory.
+        // FreshClam verifies Cisco's signed databases before it writes them.
+        std::fs::create_dir_all(&state.paths.db_freshclam).map_err(|e| format!("cannot create database directory: {e}"))?;
+        let config = state.paths.data.join("freshclam.conf");
+        std::fs::write(&config, "DatabaseMirror database.clamav.net\n")
+            .map_err(|e| format!("cannot write FreshClam configuration: {e}"))?;
+        let certs = executable.parent().unwrap_or_else(|| std::path::Path::new(".")).join("certs");
+        command
+            .arg(format!("--config-file={}", config.display()))
+            .arg(format!("--datadir={}", state.paths.db_freshclam.display()))
+            .arg(format!("--cvdcertsdir={}", certs.display()));
+    }
+    let output = command.output().map_err(|e| format!("cannot start {}: {e}", executable.display()))?;
     if !output.status.success() {
         let mut message = String::from_utf8_lossy(&output.stderr).trim().to_string();
         if message.is_empty() {
@@ -172,8 +198,12 @@ fn refresh_freshclam<R: Runtime>(app: &AppHandle<R>, state: &AppState) -> Result
     emit(app, "verifying", 0, 0, None);
     state.reload_db();
     let info = state.engine.db_info();
+    let no_supported_signatures = bundled && !info.sources.iter().any(|source| source.kind == "clamav-cvd" && source.signatures > 0);
     let _ = app.emit("db://reloaded", &info);
     let _ = app.emit("status://changed", ());
+    if no_supported_signatures {
+        return Err("FreshClam updated its database, but SecCorp could not load any supported ClamAV signatures. Some ClamAV formats are not supported by this engine.".into());
+    }
     Ok(info)
 }
 
@@ -189,7 +219,7 @@ fn apply_inner<R: Runtime>(app: &AppHandle<R>, state: &AppState) -> Result<secco
         return Err(format!("this database requires a newer SecCorp version ({min})"));
     }
     let current = state.engine.db_info().version;
-    let current_cmp = (!current.starts_with("builtin-")).then_some(current.as_str());
+    let current_cmp = (!current.starts_with("builtin-") && !current.starts_with("clamav-")).then_some(current.as_str());
     if let Some(cur) = current_cmp
         && seccom_engine::update::compare_versions(&index.version, cur) != std::cmp::Ordering::Greater
     {

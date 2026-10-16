@@ -164,6 +164,12 @@ export function SignaturesPage() {
             title={t("settings.updates")}
             sub={t(info.updateMode === "freshclam" ? "signatures.freshclam" : "signatures.signed")}
           />
+          {info.updateMode === "freshclam" && (
+            <div className="callout" style={{ marginBottom: 14 }}>
+              <Info size={18} />
+              <div>{t("signatures.clamavLimits")}</div>
+            </div>
+          )}
           {!info.updateConfigured ? (
             <div className="callout">
               <Info size={18} />
@@ -254,7 +260,9 @@ export function SignaturesPage() {
             <div className="list-item" key={`${s.name}-${i}`}>
               <div className="grow" style={{ minWidth: 0 }}>
                 <div className="list-title ellipsis">{s.name}</div>
-                <div className="list-sub">{s.kind}</div>
+                <div className="list-sub">
+                  {s.kind}{s.skipped > 0 ? ` · ${t("signatures.skippedFormats", { n: i18n.num(s.skipped) })}` : ""}
+                </div>
               </div>
               <span className="num" style={{ fontWeight: 600 }}>
                 {i18n.num(s.signatures)}
