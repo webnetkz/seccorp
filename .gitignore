@@ -10,6 +10,7 @@
 # (the build scripts re-create and configure them)
 /app/src-tauri/gen/
 /plugins/tauri-plugin-seccom-device/android/.tauri/
+/plugins/tauri-plugin-seccom-device/.tauri/
 
 # Build outputs collected by build/*
 /dist-release/

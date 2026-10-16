@@ -208,6 +208,7 @@ export function ScanPage() {
   const check = useCheckFile();
   const platform = info?.platform;
   const f = info?.features;
+  const onDemandOnly = f?.onDemandOnly ?? false;
   const mobile = platform === "android" || platform === "ios";
 
   useEffect(() => {
@@ -262,7 +263,7 @@ export function ScanPage() {
   const full = platform === "android" ? "fullAndroid" : "full";
   // On desktop the single-file check lives in the page header, so the grid keeps three even cards.
   const types: { kind: ScanKind | "file"; key: string; icon: ReactNode; recommended?: boolean }[] = [
-    { kind: "quick", key: quick, icon: <Zap size={24} />, recommended: true },
+    ...(!onDemandOnly ? [{ kind: "quick" as const, key: quick, icon: <Zap size={24} />, recommended: true }] : []),
     ...(f?.fullScan ? [{ kind: "full" as const, key: full, icon: <HardDrive size={24} /> }] : []),
     ...(f?.installedApps ? [{ kind: "apps" as const, key: "apps", icon: <LayoutGrid size={24} /> }] : []),
     ...(platform !== "ios" ? [{ kind: "custom" as const, key: "custom", icon: <FolderPlus size={24} /> }] : []),

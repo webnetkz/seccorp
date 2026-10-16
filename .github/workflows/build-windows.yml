@@ -1,4 +1,5 @@
-# Windows build: NSIS installer (.exe) and MSI for x64 (+ NSIS for ARM64).
+# Windows build: NSIS installer, MSI and Microsoft Store MSIX for x64
+# (+ NSIS and Store MSIX for ARM64).
 # Runs on demand or for tags like v1.2.3. Independent from the other platforms.
 name: Build Windows
 
@@ -11,6 +12,7 @@ on:
         options: [x64, arm64, both]
         default: x64
   push:
+    branches: ["codex/microsoft-store-1.0.0"]
     tags: ["v*"]
 
 permissions:
@@ -51,7 +53,7 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}"
+        run: ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}" -StoreMsix
 
       - uses: actions/upload-artifact@v6
         with:

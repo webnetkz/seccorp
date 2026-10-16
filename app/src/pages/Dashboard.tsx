@@ -39,7 +39,7 @@ export function Dashboard() {
     );
   }
 
-  const ios = info.platform === "ios";
+  const onDemandOnly = info.features.onDemandOnly;
   const state = !d.dbReady ? "idle" : d.status;
   const statusKey = !d.dbReady ? "loading" : d.status;
   const issues = d.issues.filter((i) => i !== "threats");
@@ -99,6 +99,10 @@ export function Dashboard() {
               <Badge tone="accent" dot>
                 {t("dashboard.scanRunning")}
               </Badge>
+            ) : onDemandOnly ? (
+              <Badge tone="accent" dot>
+                {t("dashboard.onDemand")}
+              </Badge>
             ) : d.realtime.running ? (
               <Badge tone="ok" dot>
                 {t("protection.statusOn")}
@@ -129,7 +133,7 @@ export function Dashboard() {
                 <Button variant="danger" size="lg" icon={<ShieldAlert size={18} />} onClick={() => navigate("threats")}>
                   {t("dashboard.resolveThreats")}
                 </Button>
-              ) : ios ? (
+              ) : onDemandOnly ? (
                 <Button variant="primary" size="lg" icon={<FileSearch size={18} />} onClick={check.start}>
                   {t("dashboard.checkFile")}
                 </Button>
@@ -138,9 +142,9 @@ export function Dashboard() {
                   {t("dashboard.quickScan")}
                 </Button>
               )}
-              {ios ? (
-                <Button size="lg" icon={<ScanSearch size={18} />} onClick={() => startScan("quick")}>
-                  {t("dashboard.quickScan")}
+              {onDemandOnly ? (
+                <Button size="lg" icon={<ScanSearch size={18} />} onClick={() => navigate("scan")}>
+                  {t("dashboard.openScanner")}
                 </Button>
               ) : (
                 <Button size="lg" icon={<ScanSearch size={18} />} onClick={() => (d.status === "danger" ? startScan("quick") : startScan("full"))}>

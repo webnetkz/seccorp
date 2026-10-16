@@ -68,13 +68,14 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
+        let mac_store = cfg!(all(target_os = "macos", feature = "mac-app-store"));
         Settings {
             language: "auto".into(),
             theme: "system".into(),
-            realtime_enabled: cfg!(any(desktop, target_os = "android")),
-            network_monitor_enabled: cfg!(desktop),
-            network_threat_intel: cfg!(desktop),
-            network_spyware_heuristics: cfg!(desktop),
+            realtime_enabled: cfg!(any(desktop, target_os = "android")) && !mac_store,
+            network_monitor_enabled: cfg!(desktop) && !mac_store,
+            network_threat_intel: cfg!(desktop) && !mac_store,
+            network_spyware_heuristics: cfg!(desktop) && !mac_store,
             realtime_paths: Vec::new(),
             auto_quarantine: true,
             notifications: true,
@@ -87,7 +88,7 @@ impl Default for Settings {
             schedule: Schedule::default(),
             launch_at_login: false,
             start_minimized: true,
-            close_to_tray: cfg!(desktop),
+            close_to_tray: cfg!(desktop) && !mac_store,
             update_url: option_env!("SECCOM_UPDATE_URL").unwrap_or("").to_string(),
             auto_update: true,
             scan_installed_apps: true,

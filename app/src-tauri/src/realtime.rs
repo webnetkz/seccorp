@@ -32,7 +32,7 @@ pub struct Realtime {
 }
 
 pub fn supported() -> bool {
-    true
+    !cfg!(all(target_os = "macos", feature = "mac-app-store"))
 }
 
 impl Realtime {
@@ -99,6 +99,10 @@ pub fn status<R: Runtime>(app: &AppHandle<R>) -> RealtimeStatus {
 pub fn apply<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<AppState>();
     stop(app);
+    if !supported() {
+        let _ = app.emit("status://changed", ());
+        return;
+    }
     let settings = state.settings();
     if !settings.realtime_enabled {
         let _ = app.emit("status://changed", ());

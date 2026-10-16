@@ -98,6 +98,8 @@ export const ru = {
     noThreats: "угроз нет",
     threatsCount: "угроз: {n}",
     protectionScore: "Индекс защиты",
+    onDemand: "Проверка по запросу",
+    openScanner: "Выбрать файлы",
   },
   scan: {
     title: "Проверка",

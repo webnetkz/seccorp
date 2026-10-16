@@ -20,6 +20,10 @@
 .PARAMETER DebugBuild
   Unoptimized build with developer tools enabled.
 
+.PARAMETER StoreMsix
+  Also package an unsigned MSIX using the identity assigned in Partner Center.
+  Microsoft Store signs it after certification.
+
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File build\windows\build.ps1
 .EXAMPLE
@@ -30,7 +34,8 @@ param(
   [ValidateSet("x64", "arm64", "both")]
   [string]$Arch = "x64",
   [string]$Bundles = "nsis,msi",
-  [switch]$DebugBuild
+  [switch]$DebugBuild,
+  [switch]$StoreMsix
 )
 
 $ErrorActionPreference = "Stop"
@@ -112,6 +117,11 @@ try {
           Copy-Item $_.FullName -Destination $out -Force
           Write-Host "  -> dist-release\windows\$target\$($_.Name)"
         }
+    }
+
+    if ($StoreMsix) {
+      & (Join-Path $PSScriptRoot "package-store.ps1") -Target $target -ProfileDir $profileDir
+      if ($LASTEXITCODE -ne 0) { throw "Store MSIX packaging failed with exit code $LASTEXITCODE" }
     }
   }
 }

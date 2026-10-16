@@ -100,6 +100,8 @@ export const en: typeof ru = {
     noThreats: "no threats",
     threatsCount: "threats: {n}",
     protectionScore: "Protection score",
+    onDemand: "On-demand scanning",
+    openScanner: "Choose files",
   },
   scan: {
     title: "Scan",

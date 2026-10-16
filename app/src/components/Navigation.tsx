@@ -34,7 +34,7 @@ function useItems() {
     { route: "dashboard", label: t("nav.dashboard"), icon: <House size={19} /> },
     ...(threats > 0 ? [{ route: "threats" as Route, label: t("nav.threats"), icon: <ShieldAlert size={19} />, badge: threats }] : []),
     { route: "scan", label: t("nav.scan"), icon: <ScanSearch size={19} />, dot: scan.running },
-    { route: "protection", label: t("nav.protection"), icon: <Radar size={19} /> },
+    ...(f?.realtime ? [{ route: "protection" as Route, label: t("nav.protection"), icon: <Radar size={19} /> }] : []),
     ...(f?.networkProtection ? [{ route: "network" as Route, label: t("nav.network"), icon: <Network size={19} /> }] : []),
     ...(f?.installedApps ? [{ route: "apps" as Route, label: t("nav.apps"), icon: <LayoutGrid size={19} /> }] : []),
     ...(f?.deviceCheck ? [{ route: "device" as Route, label: t("nav.device"), icon: <Smartphone size={19} /> }] : []),

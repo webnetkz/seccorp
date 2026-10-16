@@ -12,6 +12,7 @@ function emit(event: string, payload: unknown) {
 
 const params = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
 const platform = (params.get("platform") as T.Platform) || "windows";
+const macStore = platform === "macos" && params.get("store") === "1";
 const now = () => Math.floor(Date.now() / 1000);
 const uid = () => Math.random().toString(16).slice(2, 14) + Math.random().toString(16).slice(2, 14);
 
@@ -28,30 +29,31 @@ const p = (...parts: string[]) => [home, ...parts].join(sep);
 
 const desktop = platform === "windows" || platform === "macos" || platform === "linux";
 const features: T.Features = {
-  realtime: true,
-  processes: desktop,
-  startupItems: desktop,
+  realtime: !macStore,
+  processes: desktop && !macStore,
+  startupItems: desktop && !macStore,
   installedApps: platform === "android",
   deviceCheck: platform === "android" || platform === "ios",
-  tray: desktop,
-  autostart: desktop,
-  schedule: desktop,
+  tray: desktop && !macStore,
+  autostart: desktop && !macStore,
+  schedule: desktop && !macStore,
   folderPicker: desktop,
   folderBrowser: platform === "android",
-  fullScan: platform !== "ios",
+  fullScan: platform !== "ios" && !macStore,
   storagePermission: platform === "android",
-  fullDiskAccess: platform === "macos",
-  removableMedia: desktop,
-  networkProtection: desktop,
+  fullDiskAccess: platform === "macos" && !macStore,
+  removableMedia: desktop && !macStore,
+  networkProtection: desktop && !macStore,
+  onDemandOnly: platform === "ios" || macStore,
 };
 
 let settings: T.Settings = {
   language: (params.get("lang") as T.Settings["language"]) || "auto",
   theme: (params.get("theme") as T.Settings["theme"]) || "system",
-  realtimeEnabled: platform !== "ios",
-  networkMonitorEnabled: desktop,
-  networkThreatIntel: desktop,
-  networkSpywareHeuristics: desktop,
+  realtimeEnabled: platform !== "ios" && !macStore,
+  networkMonitorEnabled: desktop && !macStore,
+  networkThreatIntel: desktop && !macStore,
+  networkSpywareHeuristics: desktop && !macStore,
   realtimePaths: [],
   autoQuarantine: true,
   notifications: true,
@@ -64,7 +66,7 @@ let settings: T.Settings = {
   schedule: { enabled: true, kind: "quick", frequency: "weekly", weekday: 2, hour: 12, minute: 0, lastRun: 0 },
   launchAtLogin: true,
   startMinimized: true,
-  closeToTray: true,
+  closeToTray: !macStore,
   updateUrl: "https://updates.example.com/seccom/update.json",
   autoUpdate: true,
   scanInstalledApps: true,

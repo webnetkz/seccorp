@@ -145,12 +145,14 @@ pub fn run() {
 
             #[cfg(desktop)]
             {
-                tray::create(&handle)?;
-                scheduler::spawn(&handle);
-                media::spawn(&handle);
+                if !cfg!(feature = "mac-app-store") {
+                    tray::create(&handle)?;
+                    scheduler::spawn(&handle);
+                    media::spawn(&handle);
+                }
                 let state = handle.state::<AppState>();
                 let settings = state.settings();
-                {
+                if !cfg!(feature = "mac-app-store") {
                     use tauri_plugin_autostart::ManagerExt;
                     let enabled = handle.autolaunch().is_enabled().unwrap_or(false);
                     if enabled != settings.launch_at_login {
@@ -174,7 +176,7 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let app = window.app_handle();
                 let state = app.state::<AppState>();
-                if state.settings().close_to_tray {
+                if !cfg!(feature = "mac-app-store") && state.settings().close_to_tray {
                     api.prevent_close();
                     let _ = window.hide();
                 }
