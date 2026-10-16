@@ -43,7 +43,8 @@ jobs:
           sudo apt-get install --yes clamav-freshclam
           mkdir -p /tmp/clamav-db
           # The Ubuntu package installs a valid /etc/clamav/freshclam.conf.
-          # Run as root so FreshClam can open its configured system log file.
+          # Stop the package daemon before the one-shot updater takes its log lock.
+          sudo systemctl stop clamav-freshclam.service || true
           sudo freshclam --datadir=/tmp/clamav-db --show-progress
 
       - name: Validate and sign feed bundle
