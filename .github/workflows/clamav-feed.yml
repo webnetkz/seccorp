@@ -43,6 +43,8 @@ jobs:
           sudo apt-get install --yes clamav-freshclam
           mkdir -p /tmp/clamav-db
           printf '%s\n' 'DatabaseMirror database.clamav.net' > "$RUNNER_TEMP/freshclam.conf"
+          ls -l "$RUNNER_TEMP/freshclam.conf"
+          od -An -tx1c "$RUNNER_TEMP/freshclam.conf"
           freshclam --debug --config-file="$RUNNER_TEMP/freshclam.conf" --version || true
           freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
 
