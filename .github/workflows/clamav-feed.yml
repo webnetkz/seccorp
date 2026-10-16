@@ -42,7 +42,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes clamav-freshclam
           mkdir -p /tmp/clamav-db
-          printf 'DatabaseMirror database.clamav.net\nChecks 24\nDatabaseDirectory /tmp/clamav-db\n' > "$RUNNER_TEMP/freshclam.conf"
+          conf_sample=/usr/share/doc/clamav-freshclam/examples/freshclam.conf.sample
+          if [ -f "$conf_sample" ]; then
+            cp "$conf_sample" "$RUNNER_TEMP/freshclam.conf"
+          else
+            clamconf -g freshclam.conf > "$RUNNER_TEMP/freshclam.conf"
+          fi
+          # Sample configs deliberately contain the invalid sentinel directive.
+          sed -i '/^Example$/d' "$RUNNER_TEMP/freshclam.conf"
+          printf '\nDatabaseMirror database.clamav.net\nChecks 24\nDatabaseDirectory /tmp/clamav-db\n' >> "$RUNNER_TEMP/freshclam.conf"
           freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
 
       - name: Validate and sign feed bundle
