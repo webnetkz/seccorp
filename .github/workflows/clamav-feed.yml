@@ -43,7 +43,8 @@ jobs:
           sudo apt-get install --yes clamav-freshclam
           mkdir -p /tmp/clamav-db
           # The Ubuntu package installs a valid /etc/clamav/freshclam.conf.
-          freshclam --datadir=/tmp/clamav-db --show-progress
+          # Run as root so FreshClam can open its configured system log file.
+          sudo freshclam --datadir=/tmp/clamav-db --show-progress
 
       - name: Validate and sign feed bundle
         run: cargo run --release -p seccom-engine --bin seccom-feed -- prepare /tmp/clamav-db "$RUNNER_TEMP/seccom-feed"
