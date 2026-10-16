@@ -42,7 +42,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes clamav-freshclam
           mkdir -p /tmp/clamav-db
-          printf 'Checks 24\nDatabaseDirectory /tmp/clamav-db\n' > "$RUNNER_TEMP/freshclam.conf"
+          printf 'DatabaseMirror database.clamav.net\nChecks 24\nDatabaseDirectory /tmp/clamav-db\n' > "$RUNNER_TEMP/freshclam.conf"
           freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
 
       - name: Validate and sign feed bundle
