@@ -5,7 +5,7 @@
 #   build/ios/build.sh [--export app-store-connect|release-testing|debugging]
 #   build/ios/build.sh --simulator        run a development build in the iOS Simulator
 #
-# Requirements: a Mac with Xcode 15+, Node.js 20+, Rust (rustup) and an Apple
+# Requirements: a Mac with Xcode 26+ (iOS 26 SDK), Node.js 20+, Rust (rustup) and an Apple
 # Developer account. APPLE_DEVELOPMENT_TEAM (10-character Team ID) is required.
 #
 # Optional environment:

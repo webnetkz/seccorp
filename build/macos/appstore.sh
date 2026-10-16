@@ -21,7 +21,9 @@ BUNDLE_ID="com.webnetkz.seccom"
 die() { echo "error: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 not found"; }
 find_identity() {
-  security find-identity -v -p codesigning 2>/dev/null |
+  # The installer certificate signs a .pkg and is not a codesigning identity,
+  # so query all valid identities before filtering by the requested name.
+  security find-identity -v 2>/dev/null |
     sed -n "s/^ *[0-9]*) [0-9A-F]* \"\\($1[^\"]*\\)\".*/\\1/p" | head -n 1
 }
 

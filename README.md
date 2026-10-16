@@ -59,7 +59,7 @@ docs/ARCHITECTURE.md               устройство проекта
 | Windows | Windows 10/11 | Rust ≥ 1.88, Node.js 22 LTS, Visual Studio 2022 Build Tools («Разработка классических приложений на C++») |
 | macOS | Mac (macOS 13+) | Rust, Node.js, Xcode Command Line Tools |
 | Android | macOS, Windows или Linux | Rust, Node.js, JDK 17, Android SDK + NDK 27 (`ANDROID_HOME`, `NDK_HOME`) |
-| iOS | Mac | Rust, Node.js, Xcode 15+, аккаунт Apple Developer |
+| iOS | Mac | Rust, Node.js, Xcode 26+ (iOS 26 SDK), аккаунт Apple Developer |
 
 Готовые приложения работают на Windows 10+, macOS 12+, Android 8.0+ (API 26) и iOS 15+.
 
