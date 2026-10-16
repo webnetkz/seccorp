@@ -50,7 +50,9 @@ jobs:
           fi
           # Sample configs deliberately contain the invalid sentinel directive.
           sed -i '/^Example$/d' "$RUNNER_TEMP/freshclam.conf"
-          printf '\nDatabaseMirror database.clamav.net\nChecks 24\nDatabaseDirectory /tmp/clamav-db\n' >> "$RUNNER_TEMP/freshclam.conf"
+          if ! grep -q '^DatabaseMirror database.clamav.net$' "$RUNNER_TEMP/freshclam.conf"; then
+            printf '\nDatabaseMirror database.clamav.net\n' >> "$RUNNER_TEMP/freshclam.conf"
+          fi
           freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
 
       - name: Validate and sign feed bundle
