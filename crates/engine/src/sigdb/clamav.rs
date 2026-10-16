@@ -171,20 +171,25 @@ pub struct CvdHeader {
 /// Files contained in a CVD: `(file name, content)`.
 pub type CvdFiles = Vec<(String, Vec<u8>)>;
 
-/// Unpacks a `.cvd/.cld/.cud` container.
-pub fn unpack_cvd(bytes: &[u8]) -> Result<(CvdHeader, CvdFiles)> {
-    const MAX_ENTRY: u64 = 1 << 30;
+/// Reads the fixed CVD header without decompressing the database payload.
+pub fn read_cvd_header(bytes: &[u8]) -> Result<CvdHeader> {
     if bytes.len() < 512 || !bytes.starts_with(b"ClamAV-VDB:") {
         return Err(Error::Database("not a ClamAV CVD/CLD file".into()));
     }
     let header_text = String::from_utf8_lossy(&bytes[..512]);
     let fields: Vec<&str> = header_text.trim_end_matches(['\0', ' ']).split(':').collect();
-    let header = CvdHeader {
+    Ok(CvdHeader {
         build_time: fields.get(1).copied().unwrap_or("").trim().to_string(),
         version: fields.get(2).and_then(|v| v.trim().parse().ok()).unwrap_or(0),
         signatures: fields.get(3).and_then(|v| v.trim().parse().ok()).unwrap_or(0),
         functionality_level: fields.get(4).and_then(|v| v.trim().parse().ok()).unwrap_or(0),
-    };
+    })
+}
+
+/// Unpacks a `.cvd/.cld/.cud` container.
+pub fn unpack_cvd(bytes: &[u8]) -> Result<(CvdHeader, CvdFiles)> {
+    const MAX_ENTRY: u64 = 1 << 30;
+    let header = read_cvd_header(bytes)?;
     let body = &bytes[512..];
     let mut tar_bytes = Vec::new();
     let tar_data: &[u8] = if body.starts_with(&[0x1F, 0x8B]) {
@@ -269,6 +274,7 @@ mod tests {
         cvd.extend_from_slice(&gz);
         let (hdr, files) = unpack_cvd(&cvd).unwrap();
         assert_eq!(hdr.version, 27000);
+        assert_eq!(read_cvd_header(&cvd).unwrap(), hdr);
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].0, "test.hdb");
     }

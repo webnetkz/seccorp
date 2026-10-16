@@ -12,7 +12,7 @@
 - Copyright: `2026 webnetkz`
 - Support URL: `https://github.com/webnetkz/seccorp/issues`
 - Privacy policy URL: `https://github.com/webnetkz/seccorp/blob/main/docs/PRIVACY.md`
-- App privacy: Data Not Collected
+- App privacy: Data Not Collected (the public signature feed is served by GitHub; ordinary request metadata such as IP address is used to deliver downloads and is not retained by SecCorp)
 - Encryption: uses only exempt encryption provided by the operating system (HTTPS and local data protection); `ITSAppUsesNonExemptEncryption = NO`
 - App UI: follows the system language and appearance by default; Russian/English and light/dark are selectable in Settings.
 
@@ -26,7 +26,7 @@ Description:
 
 > SecCorp помогает проверить безопасность файлов прямо на iPhone и iPad.
 >
-> Выберите файл в приложении «Файлы» или передайте его через меню «Поделиться». SecCorp локально проверит хеши, сигнатуры содержимого, архивы и подозрительные признаки. Содержимое файлов и результаты проверки не отправляются на сервер.
+> Выберите файл в приложении «Файлы» или передайте его через меню «Поделиться». SecCorp локально проверит хеши, сигнатуры содержимого, архивы и подозрительные признаки. При первом запуске приложение может скачать обновляемую базу из публичного GitHub-фида; проверяемые файлы, их хеши и результаты проверки на сервер не отправляются.
 >
 > Возможности:
 > - проверка выбранных файлов;
@@ -48,7 +48,7 @@ Description:
 
 > SecCorp helps you check files directly on iPhone and iPad.
 >
-> Select a file in the Files app or send it through the Share menu. SecCorp checks hashes, content signatures, archives, and suspicious characteristics locally. File contents and scan results are not uploaded.
+> Select a file in the Files app or send it through the Share menu. SecCorp checks hashes, content signatures, archives, and suspicious characteristics locally. On first launch, the app can download an updated signature database from a public GitHub feed; files, their hashes, and scan results are not uploaded.
 >
 > Features:
 > - scan selected files;
@@ -70,7 +70,7 @@ Description:
 
 > SecCorp — локальный сканер безопасности для выбранных файлов и папок на Mac.
 >
-> Приложение использует сигнатурный и эвристический анализ, проверяет содержимое архивов и помогает изолировать найденные угрозы в зашифрованном карантине. Файлы и результаты проверки не загружаются на сервер.
+> Приложение использует сигнатурный и эвристический анализ, проверяет содержимое архивов и помогает изолировать найденные угрозы в зашифрованном карантине. При первом запуске и при проверке обновлений приложение загружает подписанную базу сигнатур из GitHub; файлы, их хеши и результаты проверки не отправляются.
 >
 > Версия из Mac App Store работает в песочнице Apple и получает доступ только к тем файлам и папкам, которые вы явно выбрали. Для защиты всего диска, мониторинга файлов в реальном времени, подключаемых носителей и сетевых соединений используйте прямую версию SecCorp с сайта разработчика.
 
@@ -84,14 +84,14 @@ Description:
 
 > SecCorp is a local security scanner for files and folders you select on your Mac.
 >
-> It uses signature and heuristic analysis, inspects supported archives, and can isolate detections in encrypted quarantine. Files and scan results are not uploaded.
+> It uses signature and heuristic analysis, inspects supported archives, and can isolate detections in encrypted quarantine. The app can download signed signature database updates from GitHub on first launch and during update checks; files, their hashes, and scan results are not uploaded.
 >
 > The Mac App Store version runs inside Apple's sandbox and can access only files and folders that you explicitly select. Whole-disk protection, real-time file monitoring, removable-media checks, and network-connection monitoring remain available in the direct version of SecCorp from the developer.
 
 ## Review notes
 
-SecCorp does not claim system-wide protection on iOS. Use the system document picker to select a sample file. The Mac App Store binary is the sandboxed `mac-app-store` build and scans only user-selected items. The included EICAR string can be used to verify detection without real malware.
+SecCorp does not claim system-wide protection on iOS. Use the system document picker to select a sample file. The Mac App Store binary is the sandboxed `mac-app-store` build and scans only user-selected items. The included EICAR string can be used to verify detection without real malware. First launch may download the signed ClamAV-derived SecCorp feed from public GitHub Releases; it includes only ClamAV signature formats currently supported by the SecCorp engine and is not a full ClamAV engine/database implementation.
 
 ## Release readiness (internal)
 
-Do not submit this build as a production antivirus release yet: its bundled signatures are the built-in EICAR test signatures and safe sample rules only, and the App Store builds have no signed online signature-update feed configured. Add a licensed, maintained malware database and configure its signed update service before representing the app as providing current malware protection.
+The Store build includes only its small built-in EICAR/safe sample set, then can download the signed SecCorp feed at first launch. The feed updater must be configured with its public key and stable GitHub Releases index URL, and the private signing seed must remain a GitHub Actions secret. The feed carries FreshClam-managed `main`, `daily`, and `bytecode` CVD/CLD files, but the engine supports only selected ClamAV hash/body formats; describe it as a ClamAV-derived supported subset, not full ClamAV coverage. Mac App Store and iOS builds scan only user-selected files; whole-disk, removable-media, and network-connection monitoring are unavailable in those sandboxed variants.

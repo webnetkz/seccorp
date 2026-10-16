@@ -180,26 +180,32 @@ cargo run --release -p seccom-cli -- --db signatures/base info
 
 ## Обновление баз сигнатур
 
-1. Один раз создайте ключи: `cargo run -p seccom-sigtool -- keygen --out ~/seccom-keys`.
-   **Секретный ключ `update_signing.key` никогда не кладите в репозиторий** — `.gitignore` уже
-   исключает `*.key` и папку `keys/`.
-2. Соберите приложения с публичным ключом и адресом обновлений:
+1. Для автоматического SecCorp feed владелец репозитория один раз создаёт ключ
+   `seccom-feed keygen <файл-секретного-seed>` и сохраняет seed только в GitHub Actions Secret
+   `SECCOM_UPDATE_SIGNING_SEED`. Публичный ключ помещается в Actions Variable
+   `SECCOM_UPDATE_PUBKEY`, а адрес индекса — в `SECCOM_UPDATE_URL`. Workflow
+   `.github/workflows/clamav-feed.yml` загружает базы FreshClam, импортирует поддерживаемые
+   форматы, подписывает пакет и обновляет prerelease `seccom-db-feed` каждые четыре часа.
+   **Секретный seed нельзя хранить в репозитории или включать в приложение.**
+2. Соберите приложение с публичным ключом и адресом feed:
 
    ```bash
    export SECCOM_UPDATE_PUBKEY=$(cat ~/seccom-keys/update_signing.pub)
-   export SECCOM_UPDATE_URL=https://updates.example.com/seccom/update.json
+   export SECCOM_UPDATE_URL=https://github.com/webnetkz/seccorp/releases/download/seccom-db-feed/update.json
    ```
 
    Без `SECCOM_UPDATE_PUBKEY` онлайн-обновления выключены, ручной импорт баз продолжает работать.
-3. Каждый выпуск баз: `sigtool build` → загрузить `seccom-db-<версия>.tar.gz` и `update.json`
-   на HTTPS-сервер. Подробно — в [signatures/README.md](signatures/README.md).
+3. Для собственного канала можно вручную собрать пакет через `sigtool build` и разместить
+   `seccom-db-<версия>.tar.gz` вместе с `update.json` на HTTPS-сервер. Подробно — в
+   [signatures/README.md](signatures/README.md).
 
 Приложение проверяет обновления каждые 6 часов (можно выключить) и принимает только пакеты
 с правильной подписью и версией новее установленной.
 
-Если собственный подписанный канал не задан, desktop-сборка автоматически использует установленный
-FreshClam и подхватывает официальные базы ClamAV из стандартного системного каталога. Форматы
-`.cvd`, `.cld`, `.hdb`, `.hsb`, `.ndb`, YARA и списки хэшей также можно импортировать вручную.
+В опубликованном SecCorp feed распространяется только поддерживаемое движком подмножество
+подписей ClamAV; это не полноценная реализация ClamAV. Поддерживаемые форматы можно также
+импортировать вручную. Desktop-сборка может использовать локальные базы FreshClam, если они
+установлены в системе.
 
 ## CI (GitHub Actions)
 
@@ -208,6 +214,7 @@ FreshClam и подхватывает официальные базы ClamAV и�
 | `ci.yml` | тесты движка, clippy, сборка интерфейса — на каждый push и pull request |
 | `build-windows.yml` | `.exe` и `.msi` |
 | `build-macos.yml` | универсальные `.app` и `.dmg` |
+| `clamav-feed.yml` | подписанный feed поддерживаемого подмножества ClamAV в GitHub Releases |
 | `build-android.yml` | `.apk` и `.aab` |
 | `build-ios.yml` | `.ipa` |
 

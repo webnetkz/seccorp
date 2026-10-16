@@ -1,0 +1,96 @@
+name: Refresh SecCorp ClamAV database feed
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 */4 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: clamav-db-feed
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SECCOM_UPDATE_URL: ${{ vars.SECCOM_UPDATE_URL }}
+      SECCOM_UPDATE_SIGNING_SEED: ${{ secrets.SECCOM_UPDATE_SIGNING_SEED }}
+      SECCOM_UPDATE_ASSET_BASE_URL: https://github.com/webnetkz/seccorp/releases/download/seccom-db-feed
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: clamav-feed
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/clamav-db
+          key: clamav-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: clamav-db-${{ runner.os }}-
+
+      - name: Download official databases with FreshClam
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clamav-freshclam
+          mkdir -p /tmp/clamav-db
+          printf 'Checks 24\nDatabaseDirectory /tmp/clamav-db\n' > "$RUNNER_TEMP/freshclam.conf"
+          freshclam --config-file="$RUNNER_TEMP/freshclam.conf" --datadir=/tmp/clamav-db --show-progress
+
+      - name: Validate and sign feed bundle
+        run: cargo run --release -p seccom-engine --bin seccom-feed -- prepare /tmp/clamav-db "$RUNNER_TEMP/seccom-feed"
+
+      - name: Skip unchanged database
+        id: changed
+        run: |
+          next="$(jq -r .version "$RUNNER_TEMP/seccom-feed/update.json")"
+          current=""
+          if [ -n "$SECCOM_UPDATE_URL" ]; then
+            current="$(curl --fail --location --silent --show-error "$SECCOM_UPDATE_URL" | jq -r .version 2>/dev/null || true)"
+          fi
+          if [ "$next" = "$current" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The ClamAV database versions have not changed ($next)."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Publishing database version $next."
+          fi
+
+      - name: Create stable database release
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view seccom-db-feed --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create seccom-db-feed \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "SecCorp signature database feed" \
+              --notes "Signed ClamAV-derived database bundles for SecCorp. The app accepts bundles only after Ed25519 signature and SHA-256 verification." \
+              --prerelease \
+              --latest=false
+          fi
+          bundle="$(find "$RUNNER_TEMP/seccom-feed" -maxdepth 1 -name 'seccom-db-*.tar.gz' -print -quit)"
+          test -n "$bundle"
+          gh release upload seccom-db-feed "$bundle" --repo "$GITHUB_REPOSITORY"
+          gh release upload seccom-db-feed "$RUNNER_TEMP/seccom-feed/update.json" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Remove expired feed bundles
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cutoff="$(date -u -d '30 days ago' +%s)"
+          gh release view seccom-db-feed --repo "$GITHUB_REPOSITORY" --json assets \
+            | jq -r --argjson cutoff "$cutoff" '.assets[] | select(.name | startswith("seccom-db-")) | select((.createdAt | fromdateiso8601) < $cutoff) | .name' \
+            | while IFS= read -r asset; do
+                [ -n "$asset" ] && [ "$asset" != "$(basename "$(find "$RUNNER_TEMP/seccom-feed" -maxdepth 1 -name 'seccom-db-*.tar.gz' -print -quit)")" ] || continue
+                gh release delete-asset seccom-db-feed "$asset" --repo "$GITHUB_REPOSITORY" --yes
+              done
