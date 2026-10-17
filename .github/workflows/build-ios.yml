@@ -55,10 +55,15 @@ jobs:
       - name: Prepare App Store Connect API key
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
         run: |
+          if [ -z "$APPLE_API_KEY" ] || [ -z "$APPLE_API_ISSUER" ]; then
+            echo "::error::Set the APPLE_API_KEY and APPLE_API_ISSUER secrets."
+            exit 1
+          fi
           if [ -z "$APPLE_API_KEY_P8" ]; then
-            echo "::error::Set the APPLE_API_KEY, APPLE_API_ISSUER and APPLE_API_KEY_P8 secrets."
+            echo "::error::Set the APPLE_API_KEY_P8 secret."
             exit 1
           fi
           mkdir -p "$RUNNER_TEMP/private_keys"
@@ -71,6 +76,20 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: ./build/ios/build.sh --export "${{ inputs.export || 'app-store-connect' }}"
+
+      - name: Upload to App Store Connect
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          shopt -s nullglob
+          ipas=(dist-release/ios/*.ipa)
+          if [ "${#ipas[@]}" -eq 0 ]; then
+            echo "::error::No iOS .ipa found to upload."
+            exit 1
+          fi
+          xcrun altool --upload-app --type ios --file "${ipas[0]}" \
+            --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
 
       - name: Remove API key
         if: always()

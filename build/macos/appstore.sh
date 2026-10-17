@@ -50,6 +50,15 @@ npx tauri build \
   --config src-tauri/tauri.appstore.conf.json
 
 [[ -d "$APP_BUNDLE" ]] || die "SecCorp.app was not produced at $APP_BUNDLE"
+# Tauri may stage localized InfoPlist.strings and the provisioning profile as
+# mode 0600. App Store validation rejects such bundles because the app's code
+# signature cannot be verified by non-root users. Normalize group/other read
+# bits (and directory traversal) before signing so the signature covers the
+# final permissions.
+chmod -R a+rX "$APP_BUNDLE"
+# Provisioning profiles downloaded from Apple may carry quarantine metadata,
+# which App Store Connect rejects inside a Mac App Store payload (91109).
+xattr -r -d com.apple.quarantine "$APP_BUNDLE" 2>/dev/null || true
 codesign --force --deep --options runtime --entitlements "$APP/src-tauri/macos/AppStore.entitlements" \
   --sign "$APP_IDENTITY" "$APP_BUNDLE"
 codesign --verify --deep --strict "$APP_BUNDLE"
