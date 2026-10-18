@@ -60,6 +60,7 @@ $Layout = Join-Path $TempRoot "layout"
 $Inspect = Join-Path $TempRoot "inspect"
 $Assets = Join-Path $Layout "Assets"
 $BundledDb = Join-Path $Layout "databases\bundled"
+$WebView2Runtime = Join-Path $Layout "WebView2Runtime"
 $OutDir = Join-Path $Root "dist-release\windows\store"
 $Output = Join-Path $OutDir "SecCorp_${StoreVersion}_${Architecture}.msix"
 $ClamAvVersion = "1.5.4"
@@ -121,6 +122,38 @@ try {
   Copy-Item (Join-Path $Root "app\src-tauri\icons\Square44x44Logo.png") $Assets
   Copy-Item (Join-Path $Root "app\src-tauri\icons\Square150x150Logo.png") $Assets
   Copy-Item (Join-Path $Root "signatures\base\*") $BundledDb -Recurse
+
+  # Store MSIX installs do not run Tauri's MSI/NSIS WebView2 bootstrapper.
+  # Bundle the latest Microsoft Fixed Version runtime so users do not need a
+  # separate runtime installation and the app can start on clean Windows images.
+  $DownloadPage = Invoke-WebRequest -Uri "https://developer.microsoft.com/en-us/microsoft-edge/webview2/" -UseBasicParsing
+  $PageContent = $DownloadPage.Content.Replace('\u002F', '/')
+  $RuntimePattern = 'https://msedge\.sf\.dl\.delivery\.mp\.microsoft\.com/filestreamingservice/files/[^"]+/Microsoft\.WebView2\.FixedVersionRuntime\.(?<version>\d+(?:\.\d+){3})\.(?<architecture>x64|arm64)\.cab'
+  $RuntimeMatch = $null
+  foreach ($Candidate in [regex]::Matches($PageContent, $RuntimePattern)) {
+    if ($Candidate.Groups['architecture'].Value -eq $Architecture) {
+      $RuntimeMatch = $Candidate
+      break
+    }
+  }
+  if (-not $RuntimeMatch) { throw "Microsoft's latest Fixed Version WebView2 runtime for $Architecture was not found." }
+
+  $WebView2Version = $RuntimeMatch.Groups['version'].Value
+  $WebView2Cab = Join-Path $TempRoot "Microsoft.WebView2.FixedVersionRuntime.$WebView2Version.$Architecture.cab"
+  New-Item -ItemType Directory -Force -Path $WebView2Runtime | Out-Null
+  Invoke-WebRequest -Uri $RuntimeMatch.Value -OutFile $WebView2Cab
+  $Expand = Join-Path $env:SystemRoot "System32\expand.exe"
+  & $Expand $WebView2Cab "-F:*" $WebView2Runtime
+  if ($LASTEXITCODE -ne 0) { throw "WebView2 Fixed Version extraction failed with exit code $LASTEXITCODE" }
+  $WebView2Executable = Join-Path $WebView2Runtime "msedgewebview2.exe"
+  if (-not (Test-Path $WebView2Executable)) {
+    throw "The extracted WebView2 runtime is missing msedgewebview2.exe."
+  }
+  $WebView2Signature = Get-AuthenticodeSignature -FilePath $WebView2Executable
+  if ($WebView2Signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -or
+      $WebView2Signature.SignerCertificate.Subject -notmatch "Microsoft Corporation") {
+    throw "The extracted WebView2 runtime does not have a valid Microsoft signature."
+  }
 
   $Manifest = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -186,6 +219,7 @@ try {
     throw "The packaged Store identity does not match Partner Center."
   }
   foreach ($RequiredFile in @(
+    "WebView2Runtime\msedgewebview2.exe",
     "clamav\freshclam.exe",
     "clamav\certs\clamav.crt",
     "Legal\ThirdPartyNotices.txt",
@@ -199,7 +233,7 @@ try {
 
   $Hash = (Get-FileHash -Algorithm SHA256 $Output).Hash.ToLowerInvariant()
   Write-Host "  -> dist-release\windows\store\$(Split-Path $Output -Leaf)"
-  Write-Host "     version=$StoreVersion architecture=$Architecture sha256=$Hash"
+  Write-Host "     version=$StoreVersion architecture=$Architecture webview2=$WebView2Version sha256=$Hash"
 }
 finally {
   if (Test-Path $TempRoot) { Remove-Item $TempRoot -Recurse -Force }

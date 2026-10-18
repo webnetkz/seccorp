@@ -22,6 +22,30 @@ mod updater;
 use state::AppState;
 use tauri::{Emitter, Manager};
 
+/// Prefer the Store package's bundled WebView2 runtime when one is present.
+/// This must run before Tauri creates the Windows webview.
+#[cfg(target_os = "windows")]
+fn configure_bundled_webview2_runtime() {
+    use std::os::windows::ffi::OsStrExt;
+
+    let Ok(executable) = std::env::current_exe() else {
+        return;
+    };
+    let Some(app_dir) = executable.parent() else {
+        return;
+    };
+    let runtime_dir = app_dir.join("WebView2Runtime");
+    if !runtime_dir.join("msedgewebview2.exe").is_file() {
+        return;
+    }
+
+    let name: Vec<u16> = "WEBVIEW2_BROWSER_EXECUTABLE_FOLDER".encode_utf16().chain(Some(0)).collect();
+    let value: Vec<u16> = runtime_dir.as_os_str().encode_wide().chain(Some(0)).collect();
+    unsafe {
+        windows_sys::Win32::System::Environment::SetEnvironmentVariableW(name.as_ptr(), value.as_ptr());
+    }
+}
+
 /// Arguments passed when the app starts at login (start hidden in the tray).
 #[cfg(desktop)]
 const AUTOSTART_ARG: &str = "--minimized";
@@ -50,6 +74,8 @@ fn init_logging() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    configure_bundled_webview2_runtime();
     init_logging();
     #[cfg_attr(mobile, allow(unused_mut))]
     let mut builder = tauri::Builder::default();
