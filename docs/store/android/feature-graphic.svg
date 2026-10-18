@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07152f"/>
+      <stop offset="0.55" stop-color="#0b2442"/>
+      <stop offset="1" stop-color="#06364a"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#34e5c5"/>
+      <stop offset="0.55" stop-color="#22b8f0"/>
+      <stop offset="1" stop-color="#5578ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.28" cy="0.48" r="0.48">
+      <stop offset="0" stop-color="#34e5c5" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#34e5c5" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <rect width="1024" height="500" fill="url(#glow)"/>
+  <circle cx="930" cy="72" r="210" fill="#3b6cf6" opacity="0.08"/>
+  <circle cx="887" cy="452" r="170" fill="#22b8f0" opacity="0.07"/>
+  <g transform="translate(72 58) scale(.375)" filter="url(#shadow)">
+    <rect width="1024" height="1024" rx="228" fill="#0b1b3a"/>
+    <path d="M512 168 782 268c14 5 23 18 23 33v185c0 182-121 320-281 380-8 3-16 3-24 0-160-60-281-198-281-380V301c0-15 9-28 23-33Z" fill="url(#shield)"/>
+    <path d="m512 232 233 86v168c0 151-97 269-233 322-136-53-233-171-233-322V318Z" fill="#0b1b3a" opacity=".22"/>
+    <path d="m398 520 80 80 162-162" fill="none" stroke="#fff" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="520" y="225" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="82" font-weight="760" letter-spacing="-2">SecCorp</text>
+  <text x="524" y="287" fill="#b9ccdd" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="500">Локальная защита Android</text>
+  <g transform="translate(524 330)">
+    <rect width="300" height="54" rx="27" fill="#fff" opacity=".08"/>
+    <circle cx="31" cy="27" r="9" fill="#34e5c5"/>
+    <text x="53" y="36" fill="#d9e8f3" font-family="Inter, Arial, sans-serif" font-size="24">Данные остаются на устройстве</text>
+  </g>
+</svg>

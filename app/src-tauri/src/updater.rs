@@ -165,6 +165,7 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>) -> Result<seccom_engine::DbInfo, St
     result
 }
 
+#[cfg(desktop)]
 fn refresh_freshclam<R: Runtime>(app: &AppHandle<R>, state: &AppState) -> Result<seccom_engine::DbInfo, String> {
     let executable = freshclam_executable().ok_or_else(|| "FreshClam is not installed".to_string())?;
     emit(app, "checking", 0, 0, None);
@@ -205,6 +206,11 @@ fn refresh_freshclam<R: Runtime>(app: &AppHandle<R>, state: &AppState) -> Result
         return Err("FreshClam updated its database, but SecCorp could not load any supported ClamAV signatures. Some ClamAV formats are not supported by this engine.".into());
     }
     Ok(info)
+}
+
+#[cfg(not(desktop))]
+fn refresh_freshclam<R: Runtime>(_app: &AppHandle<R>, _state: &AppState) -> Result<seccom_engine::DbInfo, String> {
+    Err("FreshClam is not available on this platform".into())
 }
 
 #[cfg(feature = "online-update")]

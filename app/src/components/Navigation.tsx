@@ -103,12 +103,14 @@ export function BottomNav() {
   const [more, setMore] = useState(false);
   const f = info?.features;
 
-  const primary: Item[] = [
-    main.find((i) => i.route === "dashboard")!,
-    { ...main.find((i) => i.route === "scan")!, badge: threats || undefined },
-    main.find((i) => i.route === "protection")!,
-    f?.installedApps ? main.find((i) => i.route === "apps")! : main.find((i) => i.route === "quarantine")!,
-  ];
+  const primary = [
+    main.find((i) => i.route === "dashboard"),
+    main.find((i) => i.route === "scan"),
+    main.find((i) => i.route === "protection"),
+    f?.installedApps ? main.find((i) => i.route === "apps") : main.find((i) => i.route === "quarantine"),
+  ]
+    .filter((item): item is Item => Boolean(item))
+    .map((item) => (item.route === "scan" ? { ...item, badge: threats || undefined } : item));
   const primaryRoutes = new Set(primary.map((i) => i.route));
   const rest = [...main, ...tools].filter((i) => !primaryRoutes.has(i.route) && i.route !== "threats");
   const moreActive = rest.some((i) => i.route === route);

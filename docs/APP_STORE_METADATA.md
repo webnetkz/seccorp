@@ -60,6 +60,48 @@ Description:
 >
 > Because of iOS restrictions, SecCorp cannot scan the operating system or other apps' private data. It checks only files that you explicitly select or share with the app.
 
+## Android — Russian
+
+- Short description: `Локальная проверка файлов, приложений и безопасности Android.`
+- Category: `Инструменты`
+
+Description:
+
+> SecCorp — локальный сканер безопасности для Android. Проверяйте файлы, архивы и установленные приложения прямо на устройстве: содержимое и результаты проверки не отправляются на сервер.
+>
+> Возможности:
+> - быстрая, полная и выборочная проверка файлов;
+> - проверка установленных приложений и их разрешений;
+> - сигнатурный и эвристический анализ;
+> - безопасная проверка ZIP, GZIP, TAR, APK, JAR и документов Office;
+> - фоновая защита новых загрузок и установок;
+> - локальный зашифрованный карантин;
+> - проверка настроек безопасности устройства;
+> - русский и английский интерфейс, светлая и тёмная темы.
+>
+> Для полной проверки SecCorp может запросить доступ ко всем файлам и сведениям об установленных приложениях. Эти разрешения используются только для основных функций антивирусного сканера. Все данные обрабатываются локально и не передаются webnetkz или третьим лицам.
+
+## Android — English
+
+- Short description: `Private local scanner for Android files, apps, and device security.`
+- Category: `Tools`
+
+Description:
+
+> SecCorp is a local security scanner for Android. Check files, archives, and installed apps directly on your device without uploading file contents or scan results.
+>
+> Features:
+> - quick, full, and custom file scans;
+> - installed-app and permission checks;
+> - signature and heuristic analysis;
+> - guarded inspection of ZIP, GZIP, TAR, APK, JAR, and Office documents;
+> - background protection for new downloads and app installations;
+> - local encrypted quarantine;
+> - device-security checks;
+> - English and Russian interfaces with light and dark themes.
+>
+> For full scans, SecCorp may request access to all files and information about installed apps. These permissions are used only for the antivirus scanner's core functionality. All data is processed locally and is not shared with webnetkz or third parties.
+
 ## macOS — Russian
 
 - Subtitle: `Проверка файлов и папок`
