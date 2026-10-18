@@ -141,10 +141,25 @@ try {
   $WebView2Version = $RuntimeMatch.Groups['version'].Value
   $WebView2Cab = Join-Path $TempRoot "Microsoft.WebView2.FixedVersionRuntime.$WebView2Version.$Architecture.cab"
   New-Item -ItemType Directory -Force -Path $WebView2Runtime | Out-Null
+  $WebView2Extract = Join-Path $TempRoot "webview2-extracted"
+  New-Item -ItemType Directory -Force -Path $WebView2Extract | Out-Null
   Invoke-WebRequest -Uri $RuntimeMatch.Value -OutFile $WebView2Cab
   $Expand = Join-Path $env:SystemRoot "System32\expand.exe"
-  & $Expand $WebView2Cab "-F:*" $WebView2Runtime
+  & $Expand $WebView2Cab "-F:*" $WebView2Extract
   if ($LASTEXITCODE -ne 0) { throw "WebView2 Fixed Version extraction failed with exit code $LASTEXITCODE" }
+
+  # The CAB stores its payload under a versioned top-level directory. Flatten
+  # that one directory so the runtime sits beside SecCorp.exe as expected by
+  # configure_bundled_webview2_runtime().
+  $WebView2SourceExecutable = Get-ChildItem -LiteralPath $WebView2Extract -Filter "msedgewebview2.exe" -File -Recurse |
+    Select-Object -First 1
+  if (-not $WebView2SourceExecutable) {
+    throw "The extracted WebView2 runtime is missing msedgewebview2.exe."
+  }
+  $WebView2SourceDir = Split-Path -Parent $WebView2SourceExecutable.FullName
+  Get-ChildItem -LiteralPath $WebView2SourceDir -Force |
+    Copy-Item -Destination $WebView2Runtime -Recurse -Force
+
   $WebView2Executable = Join-Path $WebView2Runtime "msedgewebview2.exe"
   if (-not (Test-Path $WebView2Executable)) {
     throw "The extracted WebView2 runtime is missing msedgewebview2.exe."
