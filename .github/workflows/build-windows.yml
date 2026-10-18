@@ -11,6 +11,10 @@ on:
         type: choice
         options: [x64, arm64, both]
         default: x64
+      store_msix:
+        description: "Also build the Microsoft Store MSIX"
+        type: boolean
+        default: false
   push:
     branches: ["codex/microsoft-store-1.0.0"]
     tags: ["v*"]
@@ -53,7 +57,12 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}" -StoreMsix
+        run: |
+          $buildArgs = @("-Arch", "${{ inputs.arch || 'x64' }}")
+          if ("${{ inputs.store_msix || 'false' }}" -eq "true") {
+            $buildArgs += "-StoreMsix"
+          }
+          ./build/windows/build.ps1 @buildArgs
 
       - uses: actions/upload-artifact@v6
         with:

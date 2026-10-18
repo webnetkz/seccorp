@@ -22,27 +22,107 @@ mod updater;
 use state::AppState;
 use tauri::{Emitter, Manager};
 
-/// Prefer the Store package's bundled WebView2 runtime when one is present.
-/// This must run before Tauri creates the Windows webview.
 #[cfg(target_os = "windows")]
-fn configure_bundled_webview2_runtime() {
+const BUNDLED_WEBVIEW2_ARG: &str = "--use-bundled-webview2";
+
+#[cfg(target_os = "windows")]
+fn startup_log_path() -> Option<std::path::PathBuf> {
+    let base = std::env::var_os("LOCALAPPDATA")?;
+    let directory = std::path::PathBuf::from(base).join("SecCorp").join("logs");
+    std::fs::create_dir_all(&directory).ok()?;
+    Some(directory.join("startup.log"))
+}
+
+#[cfg(target_os = "windows")]
+fn startup_log(message: &str) {
+    use std::io::Write;
+
+    let Some(path) = startup_log_path() else {
+        return;
+    };
+    let timestamp =
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|duration| duration.as_secs()).unwrap_or_default();
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{timestamp} {message}");
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn init_startup_diagnostics() {
+    if let Some(path) = startup_log_path() {
+        let _ = std::fs::File::create(path);
+    }
+    startup_log(&format!("SecCorp {} starting", env!("CARGO_PKG_VERSION")));
+
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        startup_log(&format!("panic: {info}"));
+        default_hook(info);
+    }));
+}
+
+/// Select the Store package's bundled WebView2 runtime only as a fallback.
+/// Windows 11's serviced Evergreen runtime is preferred on the first launch.
+#[cfg(target_os = "windows")]
+fn configure_bundled_webview2_runtime() -> bool {
     use std::os::windows::ffi::OsStrExt;
 
     let Ok(executable) = std::env::current_exe() else {
-        return;
+        startup_log("could not resolve the current executable");
+        return false;
     };
     let Some(app_dir) = executable.parent() else {
-        return;
+        startup_log("could not resolve the executable directory");
+        return false;
     };
     let runtime_dir = app_dir.join("WebView2Runtime");
     if !runtime_dir.join("msedgewebview2.exe").is_file() {
-        return;
+        startup_log("bundled WebView2 runtime is not present");
+        return false;
     }
 
     let name: Vec<u16> = "WEBVIEW2_BROWSER_EXECUTABLE_FOLDER".encode_utf16().chain(Some(0)).collect();
     let value: Vec<u16> = runtime_dir.as_os_str().encode_wide().chain(Some(0)).collect();
-    unsafe {
-        windows_sys::Win32::System::Environment::SetEnvironmentVariableW(name.as_ptr(), value.as_ptr());
+    let configured = unsafe { windows_sys::Win32::System::Environment::SetEnvironmentVariableW(name.as_ptr(), value.as_ptr()) != 0 };
+    if configured {
+        startup_log(&format!("using bundled WebView2 runtime at {}", runtime_dir.display()));
+    } else {
+        startup_log("failed to set the bundled WebView2 runtime path");
+    }
+    configured
+}
+
+#[cfg(target_os = "windows")]
+fn relaunch_with_bundled_webview2(error: &str) -> bool {
+    startup_log(&format!("Evergreen WebView2 initialization failed: {error}"));
+    if std::env::args().any(|argument| argument == BUNDLED_WEBVIEW2_ARG) {
+        startup_log("bundled WebView2 fallback also failed");
+        return false;
+    }
+
+    let Ok(executable) = std::env::current_exe() else {
+        return false;
+    };
+    let Some(app_dir) = executable.parent() else {
+        return false;
+    };
+    if !app_dir.join("WebView2Runtime").join("msedgewebview2.exe").is_file() {
+        startup_log("no bundled WebView2 fallback is available");
+        return false;
+    }
+
+    let mut command = std::process::Command::new(executable);
+    command.args(std::env::args_os().skip(1));
+    command.arg(BUNDLED_WEBVIEW2_ARG);
+    match command.spawn() {
+        Ok(_) => {
+            startup_log("restarted with the bundled WebView2 fallback");
+            true
+        }
+        Err(relaunch_error) => {
+            startup_log(&format!("could not restart with bundled WebView2: {relaunch_error}"));
+            false
+        }
     }
 }
 
@@ -75,7 +155,14 @@ fn init_logging() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "windows")]
-    configure_bundled_webview2_runtime();
+    {
+        init_startup_diagnostics();
+        if std::env::args().any(|argument| argument == BUNDLED_WEBVIEW2_ARG) {
+            let _ = configure_bundled_webview2_runtime();
+        } else {
+            startup_log("using the system Evergreen WebView2 runtime");
+        }
+    }
     init_logging();
     #[cfg_attr(mobile, allow(unused_mut))]
     let mut builder = tauri::Builder::default();
@@ -89,7 +176,7 @@ pub fn run() {
             .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![AUTOSTART_ARG])));
     }
 
-    builder
+    let app = builder
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -145,6 +232,12 @@ pub fn run() {
             commands::uninstall_app,
             commands::open_app_settings,
         ])
+        .on_page_load(|_webview, payload| {
+            #[cfg(target_os = "windows")]
+            startup_log(&format!("page load {:?}: {}", payload.event(), payload.url()));
+            #[cfg(not(target_os = "windows"))]
+            let _ = payload;
+        })
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let mut state = AppState::new(data_dir).map_err(Box::<dyn std::error::Error>::from)?;
@@ -210,14 +303,31 @@ pub fn run() {
             #[cfg(mobile)]
             let _ = (window, event);
         })
-        .build(tauri::generate_context!())
-        .expect("error while building SecCorp")
-        .run(|app, event| {
-            #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { .. } = event {
-                tray::show_main_window(app);
+        .build(tauri::generate_context!());
+
+    let app = match app {
+        Ok(app) => app,
+        Err(error) => {
+            #[cfg(target_os = "windows")]
+            if relaunch_with_bundled_webview2(&error.to_string()) {
+                return;
             }
-            #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
-        });
+            panic!("error while building SecCorp: {error}");
+        }
+    };
+
+    app.run(|app, event| {
+        #[cfg(target_os = "windows")]
+        match &event {
+            tauri::RunEvent::Ready => startup_log("application event loop is ready"),
+            tauri::RunEvent::Exit => startup_log("application event loop exited"),
+            _ => {}
+        }
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen { .. } = event {
+            tray::show_main_window(app);
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = (app, event);
+    });
 }
