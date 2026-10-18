@@ -58,11 +58,11 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          $buildArgs = @("-Arch", "${{ inputs.arch || 'x64' }}")
           if ("${{ inputs.store_msix || 'false' }}" -eq "true") {
-            $buildArgs += "-StoreMsix"
+            ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}" -StoreMsix
+          } else {
+            ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}"
           }
-          ./build/windows/build.ps1 @buildArgs
 
       - uses: actions/upload-artifact@v6
         with:
