@@ -1,6 +1,5 @@
 # iOS build: signed .ipa for App Store Connect / TestFlight.
-# Requires an Apple Developer account: set the APPLE_DEVELOPMENT_TEAM variable and
-# an App Store Connect API key (secrets APPLE_API_KEY, APPLE_API_ISSUER, APPLE_API_KEY_P8).
+# Requires APPLE_DEVELOPMENT_TEAM and the iOS signing / App Store Connect secrets documented in README.
 name: Build iOS
 
 on:
@@ -51,41 +50,77 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      # The private key (.p8) is materialized only on this ephemeral runner.
-      - name: Prepare App Store Connect API key
+      # Install only the SecCorp iOS App Store identity into an ephemeral keychain.
+      - name: Prepare iOS manual signing
+        if: inputs.export == 'app-store-connect' || inputs.export == ''
+        env:
+          IOS_DISTRIBUTION_CERTIFICATE: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE }}
+          IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          IOS_APP_STORE_PROFILE: ${{ secrets.IOS_APP_STORE_PROFILE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$IOS_DISTRIBUTION_CERTIFICATE" ] || [ -z "$IOS_DISTRIBUTION_CERTIFICATE_PASSWORD" ] || [ -z "$IOS_APP_STORE_PROFILE" ]; then
+            echo "::error::Set the three IOS_* signing secrets described in README."
+            exit 1
+          fi
+
+          KEYCHAIN="$RUNNER_TEMP/seccom-ios-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          umask 077
+          printf '%s' "$IOS_DISTRIBUTION_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/seccom-ios-distribution.p12"
+          printf '%s' "$IOS_APP_STORE_PROFILE" | base64 --decode > "$RUNNER_TEMP/seccom-ios-appstore.mobileprovision"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "IOS_SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/seccom-ios-distribution.p12" \
+            -P "$IOS_DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          PROFILE_PLIST="$RUNNER_TEMP/seccom-ios-appstore.plist"
+          security cms -D -i "$RUNNER_TEMP/seccom-ios-appstore.mobileprovision" > "$PROFILE_PLIST"
+          PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$PROFILE_PLIST")"
+          PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$PROFILE_PLIST")"
+          PROFILE_APP_ID="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$PROFILE_PLIST")"
+          if [ "$PROFILE_NAME" != "SecCorp iOS App Store" ] || \
+             [ "$PROFILE_APP_ID" != "${APPLE_DEVELOPMENT_TEAM}.com.webnetkz.seccom" ]; then
+            echo "::error::The supplied profile is not the SecCorp iOS App Store profile for this bundle ID."
+            exit 1
+          fi
+
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          PROFILE_PATH="$PROFILE_DIR/$PROFILE_UUID.mobileprovision"
+          cp "$RUNNER_TEMP/seccom-ios-appstore.mobileprovision" "$PROFILE_PATH"
+          echo "IOS_MOBILE_PROVISION_PATH=$PROFILE_PATH" >> "$GITHUB_ENV"
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -q 'iPhone Distribution'; then
+            echo "::error::The iOS distribution certificate could not be imported."
+            exit 1
+          fi
+          echo "IOS_PROVISIONING_PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: ./build/ios/build.sh --export "${{ inputs.export || 'app-store-connect' }}"
+
+      - name: Upload to App Store Connect
+        if: inputs.export == 'app-store-connect' || inputs.export == ''
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
         run: |
-          if [ -z "$APPLE_API_KEY" ] || [ -z "$APPLE_API_ISSUER" ]; then
-            echo "::error::Set the APPLE_API_KEY and APPLE_API_ISSUER secrets."
-            exit 1
-          fi
-          if [ -z "$APPLE_API_KEY_P8" ]; then
-            echo "::error::Set the APPLE_API_KEY_P8 secret."
-            exit 1
-          fi
-          mkdir -p "$RUNNER_TEMP/private_keys"
-          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/private_keys/AuthKey_${APPLE_API_KEY}.p8"
-          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/private_keys/AuthKey_${APPLE_API_KEY}.p8" >> "$GITHUB_ENV"
-          echo "API_PRIVATE_KEYS_DIR=$RUNNER_TEMP/private_keys" >> "$GITHUB_ENV"
-
-      - name: Build
-        env:
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-        run: ./build/ios/build.sh --export "${{ inputs.export || 'app-store-connect' }}"
-
-      - name: Upload to App Store Connect
-        env:
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-        run: |
           set -euo pipefail
+          if [ -z "$APPLE_API_KEY" ] || [ -z "$APPLE_API_ISSUER" ] || [ -z "$APPLE_API_KEY_P8" ]; then
+            echo "::error::Set APPLE_API_KEY, APPLE_API_ISSUER and APPLE_API_KEY_P8."
+            exit 1
+          fi
           mkdir -p "$HOME/.appstoreconnect/private_keys"
-          install -m 600 "$RUNNER_TEMP/private_keys/AuthKey_${APPLE_API_KEY}.p8" \
-            "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+          umask 077
+          printf '%s' "$APPLE_API_KEY_P8" \
+            > "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
 
           shopt -s nullglob
           ipa_files=(dist-release/ios/*.ipa)
@@ -102,10 +137,22 @@ jobs:
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
         run: |
-          rm -f "$RUNNER_TEMP"/private_keys/AuthKey_*.p8
           if [[ -n "${APPLE_API_KEY:-}" ]]; then
             rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
           fi
+
+      - name: Remove iOS signing assets
+        if: always()
+        run: |
+          if [[ -n "${IOS_SIGNING_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$IOS_SIGNING_KEYCHAIN" || true
+          fi
+          if [[ -n "${IOS_MOBILE_PROVISION_PATH:-}" ]]; then
+            rm -f "$IOS_MOBILE_PROVISION_PATH"
+          fi
+          rm -f "$RUNNER_TEMP/seccom-ios-distribution.p12" \
+            "$RUNNER_TEMP/seccom-ios-appstore.mobileprovision" \
+            "$RUNNER_TEMP/seccom-ios-appstore.plist"
 
       - uses: actions/upload-artifact@v6
         with:

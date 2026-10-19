@@ -10,8 +10,7 @@
 #
 # Optional environment:
 #   SECCOM_UPDATE_PUBKEY, SECCOM_UPDATE_URL           online signature updates (see README)
-#   APPLE_API_KEY, APPLE_API_ISSUER, APPLE_API_KEY_PATH   automatic signing (CI)
-#   IOS_CERTIFICATE, IOS_CERTIFICATE_PASSWORD, IOS_MOBILE_PROVISION   manual signing (CI)
+#   IOS_MOBILE_PROVISION_PATH, IOS_PROVISIONING_PROFILE_NAME   manual App Store signing (CI)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -69,12 +68,39 @@ if [[ $SIMULATOR -eq 1 ]]; then
   exec npx tauri ios dev
 fi
 
-npx tauri ios build --ci --export-method "$EXPORT"
+IPA_DIR="$GEN/build/arm64"
+if [[ "$EXPORT" == "app-store-connect" ]]; then
+  [[ -n "${IOS_MOBILE_PROVISION_PATH:-}" && -f "$IOS_MOBILE_PROVISION_PATH" ]] ||
+    die "install the SecCorp App Store provisioning profile and set IOS_MOBILE_PROVISION_PATH."
+  [[ -n "${IOS_PROVISIONING_PROFILE_NAME:-}" ]] ||
+    die "set IOS_PROVISIONING_PROFILE_NAME to the installed App Store profile name."
+
+  echo "Building an unsigned iOS archive for manual App Store signing…"
+  npx tauri ios build --ci --export-method "$EXPORT" --archive-only
+
+  archives=("$GEN"/build/*.xcarchive)
+  [[ ${#archives[@]} -eq 1 && -d "${archives[0]}" ]] ||
+    die "expected one Xcode archive in $GEN/build; found ${#archives[@]}"
+
+  EXPORT_OPTIONS="$RUNNER_TEMP/seccom-ios-export-options.plist"
+  cp "$ROOT/build/ios/ExportOptions.plist" "$EXPORT_OPTIONS"
+  /usr/libexec/PlistBuddy -c "Set :teamID $APPLE_DEVELOPMENT_TEAM" "$EXPORT_OPTIONS"
+  /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.webnetkz.seccom \"$IOS_PROVISIONING_PROFILE_NAME\"" "$EXPORT_OPTIONS"
+
+  IPA_DIR="$GEN/build/arm64/export"
+  mkdir -p "$IPA_DIR"
+  xcodebuild -exportArchive \
+    -archivePath "${archives[0]}" \
+    -exportPath "$IPA_DIR" \
+    -exportOptionsPlist "$EXPORT_OPTIONS"
+else
+  npx tauri ios build --ci --export-method "$EXPORT"
+fi
 
 OUT="$ROOT/dist-release/ios"
 mkdir -p "$OUT"
 found=0
-for ipa in "$GEN"/build/arm64/*.ipa; do
+for ipa in "$IPA_DIR"/*.ipa; do
   [[ -e "$ipa" ]] || continue
   cp -f "$ipa" "$OUT/"
   echo "  → dist-release/ios/$(basename "$ipa")"

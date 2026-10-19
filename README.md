@@ -226,7 +226,9 @@ cargo run --release -p seccom-cli -- --db signatures/base info
   - Windows — `SECCOM_WINDOWS_SIGN_COMMAND`;
   - macOS — `APPLE_CERTIFICATE` (base64 от .p12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`;
   - Android — `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`;
-  - iOS — `APPLE_API_KEY` (Key ID), `APPLE_API_ISSUER`, `APPLE_API_KEY_P8` (содержимое .p8).
+  - iOS — `IOS_DISTRIBUTION_CERTIFICATE` (base64 от SecCorp iOS `.p12`),
+    `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`, `IOS_APP_STORE_PROFILE` (base64 от профиля
+    `SecCorp iOS App Store`), а также `APPLE_API_KEY`, `APPLE_API_ISSUER` и `APPLE_API_KEY_P8`.
 
 ## Ограничения платформ
 
