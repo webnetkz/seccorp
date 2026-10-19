@@ -116,6 +116,9 @@ $LogText = Get-Content -LiteralPath $StartupLog -Raw
 if ($LogText -notmatch "page load Finished") {
   throw "The packaged WebView did not finish loading. See the diagnostic artifact."
 }
+if ($LogText -notmatch "frontend rendered") {
+  throw "The packaged frontend did not render. See the diagnostic artifact."
+}
 
-Write-Host "SecCorp packaged launch completed and the WebView page finished loading."
+Write-Host "SecCorp packaged launch completed and the frontend rendered."
 

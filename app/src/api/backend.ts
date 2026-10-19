@@ -35,6 +35,7 @@ export function errorText(e: unknown): string {
 }
 
 export const api = {
+  frontendReady: () => (isTauri ? call<void>("frontend_ready") : Promise.resolve()),
   appInfo: () => call<T.AppInfo>("app_info"),
   dashboard: () => call<T.Dashboard>("get_dashboard"),
   settings: () => call<T.Settings>("get_settings"),

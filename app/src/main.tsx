@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { api } from "./api/backend";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AppProvider } from "./store";
 import "./styles/tokens.css";
@@ -23,3 +24,12 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     </AppErrorBoundary>
   </React.StrictMode>,
 );
+
+// Record readiness only after React has committed and WebView2 has had two
+// animation frames to paint. Packaged-launch tests use this signal to catch
+// the Store-only blank-window regression.
+window.requestAnimationFrame(() => {
+  window.requestAnimationFrame(() => {
+    void api.frontendReady().catch(console.error);
+  });
+});

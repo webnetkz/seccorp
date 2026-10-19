@@ -61,6 +61,14 @@ fn init_startup_diagnostics() {
     }));
 }
 
+/// Confirms that the embedded frontend executed and committed its first React
+/// render. This distinguishes a loaded-but-blank WebView from backend startup.
+#[tauri::command]
+fn frontend_ready() {
+    #[cfg(target_os = "windows")]
+    startup_log("frontend rendered");
+}
+
 /// Select the Store package's bundled WebView2 runtime only as a fallback.
 /// Windows 11's serviced Evergreen runtime is preferred on the first launch.
 #[cfg(target_os = "windows")]
@@ -183,6 +191,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_seccom_device::init())
         .invoke_handler(tauri::generate_handler![
+            frontend_ready,
             commands::app_info,
             commands::get_dashboard,
             commands::get_settings,
