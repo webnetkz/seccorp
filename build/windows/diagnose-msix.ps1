@@ -26,10 +26,35 @@ $Package = Get-ChildItem -LiteralPath $ArtifactRoot -Filter "SecCorp_*.msix" -Fi
   Sort-Object FullName |
   Select-Object -First 1
 if (-not $Package) { throw "SecCorp MSIX was not found under $ArtifactRoot" }
-$TestPackagePath = Join-Path $OutputDir $Package.Name
-Copy-Item -LiteralPath $Package.FullName -Destination $TestPackagePath -Force
+Write-Host "Preparing packaged-launch test from $($Package.Name)"
+
+# Signing the production package (which includes the ~350 MB emergency fixed
+# WebView2 runtime) is unnecessarily slow on a hosted runner. The normal launch
+# path uses Windows' serviced Evergreen runtime, so rebuild a lightweight test
+# copy without only that fallback directory. The original Store MSIX remains
+# untouched and is still uploaded as the release artifact.
+$MakeAppx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" -File |
+  Sort-Object FullName -Descending |
+  Select-Object -First 1
+if (-not $MakeAppx) { throw "makeappx.exe was not found" }
+
+$TestLayout = Join-Path $OutputDir "test-layout"
+$TestPackagePath = Join-Path $OutputDir "$($Package.BaseName)-launch-test.msix"
+New-Item -ItemType Directory -Force -Path $TestLayout | Out-Null
+Write-Host "Unpacking the disposable launch-test package"
+& $MakeAppx.FullName unpack /o /p $Package.FullName /d $TestLayout | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "makeappx unpack failed with exit code $LASTEXITCODE" }
+$FallbackRuntime = Join-Path $TestLayout "WebView2Runtime"
+if (Test-Path -LiteralPath $FallbackRuntime) {
+  Remove-Item -LiteralPath $FallbackRuntime -Recurse -Force
+}
+Write-Host "Repacking the lightweight launch-test package"
+& $MakeAppx.FullName pack /o /d $TestLayout /p $TestPackagePath | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed with exit code $LASTEXITCODE" }
+Remove-Item -LiteralPath $TestLayout -Recurse -Force
 
 $Publisher = "CN=E352DCED-B383-4C1F-91A8-E772B76C141A"
+Write-Host "Creating a disposable package-signing certificate"
 $PasswordText = [Guid]::NewGuid().ToString("N")
 $Password = ConvertTo-SecureString -String $PasswordText -Force -AsPlainText
 $Certificate = New-SelfSignedCertificate `
@@ -51,9 +76,11 @@ $SignTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\si
   Select-Object -First 1
 if (-not $SignTool) { throw "signtool.exe was not found" }
 
+Write-Host "Signing the disposable launch-test package"
 & $SignTool.FullName sign /fd SHA256 /f $PfxPath /p $PasswordText $TestPackagePath
 if ($LASTEXITCODE -ne 0) { throw "signtool failed with exit code $LASTEXITCODE" }
 
+Write-Host "Installing the launch-test package"
 Add-AppxPackage -Path $TestPackagePath -ForceApplicationShutdown
 $Installed = Get-AppxPackage -Name "38078WebNet.kz.SecCorp"
 if (-not $Installed) { throw "The SecCorp package was not installed" }
@@ -67,6 +94,7 @@ $Identity = [pscustomobject]@{
 }
 $Identity | ConvertTo-Json | Set-Content (Join-Path $OutputDir "package.json") -Encoding utf8
 
+Write-Host "Launching SecCorp through its AppsFolder identity"
 Start-Process explorer.exe -ArgumentList "shell:AppsFolder\$($Installed.PackageFamilyName)!SecCorp"
 Start-Sleep -Seconds 20
 
@@ -88,19 +116,6 @@ if ($StartupLog) {
   Copy-Item -LiteralPath $StartupLog -Destination (Join-Path $OutputDir "startup.log") -Force
 } else {
   $CandidateLogs | Set-Content (Join-Path $OutputDir "startup-log-locations.txt") -Encoding utf8
-}
-
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$Bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$Bitmap = [System.Drawing.Bitmap]::new($Bounds.Width, $Bounds.Height)
-$Graphics = [System.Drawing.Graphics]::FromImage($Bitmap)
-try {
-  $Graphics.CopyFromScreen($Bounds.Location, [System.Drawing.Point]::Empty, $Bounds.Size)
-  $Bitmap.Save((Join-Path $OutputDir "desktop.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-} finally {
-  $Graphics.Dispose()
-  $Bitmap.Dispose()
 }
 
 if (-not ($Processes | Where-Object Name -eq "SecCorp.exe")) {
