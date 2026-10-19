@@ -3,6 +3,18 @@
 use seccom_engine::{HeuristicLevel, ScanOptions};
 use serde::{Deserialize, Serialize};
 
+/// The signed database feed used by Android Store builds. Build-time values
+/// still take precedence, which keeps development and enterprise feeds
+/// configurable.
+pub const ANDROID_UPDATE_URL: &str = "https://raw.githubusercontent.com/webnetkz/seccorp/codex/microsoft-store-1.0.0/updates/update.json";
+
+fn default_update_url() -> String {
+    option_env!("SECCOM_UPDATE_URL")
+        .filter(|url| !url.trim().is_empty())
+        .unwrap_or(if cfg!(target_os = "android") { ANDROID_UPDATE_URL } else { "" })
+        .to_string()
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Schedule {
@@ -89,7 +101,7 @@ impl Default for Settings {
             launch_at_login: false,
             start_minimized: true,
             close_to_tray: cfg!(desktop) && !mac_store,
-            update_url: option_env!("SECCOM_UPDATE_URL").unwrap_or("").to_string(),
+            update_url: default_update_url(),
             auto_update: true,
             scan_installed_apps: true,
             scan_new_apps: true,
@@ -139,6 +151,11 @@ impl Settings {
         self.realtime_paths.retain(|p| !p.trim().is_empty());
         self.realtime_paths.dedup();
         self.update_url = self.update_url.trim().to_string();
+        // Migrate settings written by older Android builds where the field was
+        // persisted as an empty string and online updates were unavailable.
+        if self.update_url.is_empty() {
+            self.update_url = default_update_url();
+        }
         self
     }
 }

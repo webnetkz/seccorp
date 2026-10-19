@@ -1,0 +1,9 @@
+{
+  "version": "2026.10.19.1",
+  "released": 1792397340,
+  "url": "seccom-db-2026.10.19.1.tar.gz",
+  "size": 606,
+  "sha256": "a76f8dbb0b67aeae9eb7b28bbb714390971a0405a4d167dcd38466cbb37afc29",
+  "signature": "adca4c224e5cb35d63e1a6cab082cd1c4b10da292b050824d67aa790e209da2c2d7ccd7cd9f9c93b90574b7c208cb1720c0e554fb60fc33afb26b0ad30a69701",
+  "minEngine": "1.0.0"
+}

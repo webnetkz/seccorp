@@ -1,21 +1,33 @@
-import { Bell, FolderLock, HardDrive, Radar, ScanSearch } from "lucide-react";
-import { useState } from "react";
+import { Bell, CheckCircle2, CloudDownload, Database, FolderLock, HardDrive, Radar, ScanSearch } from "lucide-react";
+import { useEffect, useState } from "react";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
-import { api, errorText, isTauri } from "../api/backend";
+import { api, errorText, isTauri, on } from "../api/backend";
+import type { DbInfo, UpdateProgress } from "../api/types";
 import { useI18n } from "../i18n";
 import { useStore } from "../store";
-import { Button, Segmented, Setting, Toggle } from "./ui";
+import { Button, Progress, Segmented, Setting, Toggle } from "./ui";
 
 /** First-run walkthrough: language, protection, permissions, first scan. */
 export function Onboarding() {
   const { t } = useI18n();
   const { settings, info, updateSettings, startScan, toast } = useStore();
   const [step, setStep] = useState(0);
+  const [db, setDb] = useState<DbInfo | null>(null);
+  const [dbProgress, setDbProgress] = useState<UpdateProgress | null>(null);
+  const [dbBusy, setDbBusy] = useState(false);
+  const [dbDownloaded, setDbDownloaded] = useState(false);
+
+  useEffect(() => {
+    if (info?.platform !== "android") return;
+    api.dbInfo().then(setDb).catch(() => undefined);
+    return on<UpdateProgress>("update://progress", setDbProgress);
+  }, [info?.platform]);
+
   if (!settings || !info || settings.onboardingDone) return null;
 
   const platform = info.platform;
   const needsPermissions = platform === "android" || platform === "ios" || platform === "macos";
-  const steps = needsPermissions ? 4 : 3;
+  const steps = platform === "android" ? 5 : needsPermissions ? 4 : 3;
   const finish = (scan: boolean) => {
     updateSettings({ onboardingDone: true });
     if (scan) startScan("quick");
@@ -30,12 +42,31 @@ export function Onboarding() {
     }
   };
 
+  const downloadDatabase = async () => {
+    setDbBusy(true);
+    setDbProgress({ stage: "checking", downloaded: 0, total: 0, message: null });
+    try {
+      const installed = await api.applyUpdate();
+      setDb(installed);
+      setDbDownloaded(true);
+      toast(t("onboarding.databaseUpdated"), "success");
+    } catch (e) {
+      toast(errorText(e), "error");
+    } finally {
+      setDbBusy(false);
+    }
+  };
+
   const stepKind = (() => {
     if (step === 0) return "welcome";
     if (step === 1) return "protection";
     if (step === 2 && needsPermissions) return "permissions";
+    if (step === 3 && platform === "android") return "database";
     return "scan";
   })();
+
+  const dbTotal = db ? db.hashSignatures + db.bodySignatures + db.rules : 0;
+  const dbPct = dbProgress?.total ? (dbProgress.downloaded / dbProgress.total) * 100 : 0;
 
   return (
     <div className="modal-backdrop">
@@ -123,6 +154,43 @@ export function Onboarding() {
               <Button variant="primary" onClick={next}>
                 {t("onboarding.next")}
               </Button>
+            </div>
+          </>
+        )}
+
+        {stepKind === "database" && (
+          <>
+            <span className={`icon-tile lg${dbDownloaded ? " ok" : ""}`}>
+              {dbDownloaded ? <CheckCircle2 size={26} /> : <Database size={26} />}
+            </span>
+            <div className="modal-title">{t("onboarding.databaseTitle")}</div>
+            <p className="modal-text">
+              {dbDownloaded ? t("onboarding.databaseReady", { n: dbTotal.toLocaleString() }) : t("onboarding.databaseDesc")}
+            </p>
+            {dbBusy && dbProgress && (
+              <div style={{ marginTop: 18, textAlign: "left" }}>
+                <div className="row-between" style={{ fontSize: 13, marginBottom: 8 }}>
+                  <span>{t(`signatures.stages.${dbProgress.stage}`)}</span>
+                  {dbProgress.total > 0 && <span className="faint num">{Math.floor(dbPct)}%</span>}
+                </div>
+                <Progress value={dbPct} indeterminate={dbProgress.stage !== "downloading"} />
+              </div>
+            )}
+            <div className="modal-actions">
+              {!dbDownloaded && (
+                <Button variant="ghost" disabled={dbBusy} onClick={next}>
+                  {t("onboarding.skip")}
+                </Button>
+              )}
+              {dbDownloaded ? (
+                <Button variant="primary" onClick={next}>
+                  {t("onboarding.next")}
+                </Button>
+              ) : (
+                <Button variant="primary" size="lg" icon={<CloudDownload size={18} />} loading={dbBusy} onClick={downloadDatabase}>
+                  {t("onboarding.downloadDatabase")}
+                </Button>
+              )}
             </div>
           </>
         )}

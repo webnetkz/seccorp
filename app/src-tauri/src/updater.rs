@@ -11,14 +11,19 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 /// Hex-encoded Ed25519 public key that signs database bundles.
 pub const UPDATE_PUBKEY: Option<&str> = option_env!("SECCOM_UPDATE_PUBKEY");
+const ANDROID_UPDATE_PUBKEY: &str = "aa088382a9a7068aa33f54e0e8bf9041b988c48e3f86c932691f726a52a1a51f";
 
 #[cfg(feature = "online-update")]
 const MAX_INDEX: u64 = 1 << 20;
 #[cfg(feature = "online-update")]
 const MAX_BUNDLE: u64 = 2 << 30;
 
+fn update_pubkey() -> Option<&'static str> {
+    UPDATE_PUBKEY.filter(|key| !key.trim().is_empty()).or_else(|| cfg!(target_os = "android").then_some(ANDROID_UPDATE_PUBKEY))
+}
+
 fn signed_configured(state: &AppState) -> bool {
-    UPDATE_PUBKEY.is_some_and(|k| !k.trim().is_empty()) && cfg!(feature = "online-update") && !state.settings().update_url.is_empty()
+    update_pubkey().is_some() && cfg!(feature = "online-update") && !state.settings().update_url.is_empty()
 }
 
 #[cfg(desktop)]
@@ -234,7 +239,7 @@ fn apply_inner<R: Runtime>(app: &AppHandle<R>, state: &AppState) -> Result<secco
     if index.size > MAX_BUNDLE {
         return Err("update bundle is too large".into());
     }
-    let key = seccom_engine::update::parse_public_key(UPDATE_PUBKEY.unwrap_or_default()).map_err(|e| e.to_string())?;
+    let key = seccom_engine::update::parse_public_key(update_pubkey().unwrap_or_default()).map_err(|e| e.to_string())?;
     let bundle_url = seccom_engine::update::resolve_bundle_url(&url, &index.url);
     let mut resp = agent().get(&bundle_url).call().map_err(|e| format!("download failed: {e}"))?;
     let mut reader = resp.body_mut().with_config().limit(index.size + 1).reader();

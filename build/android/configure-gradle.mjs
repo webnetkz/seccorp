@@ -34,35 +34,33 @@ if (!existsSync(gradleFile)) {
 let text = readFileSync(gradleFile, "utf8");
 if (text.includes(MARKER)) {
   console.log("release signing is already configured");
-  process.exit(0);
-}
+} else {
+  function insertBefore(source, anchor, snippet) {
+    const at = source.indexOf(anchor);
+    if (at < 0) throw new Error(`cannot find "${anchor.trim()}" in ${gradleFile}`);
+    return source.slice(0, at) + snippet + source.slice(at);
+  }
 
-function insertBefore(source, anchor, snippet) {
-  const at = source.indexOf(anchor);
-  if (at < 0) throw new Error(`cannot find "${anchor.trim()}" in ${gradleFile}`);
-  return source.slice(0, at) + snippet + source.slice(at);
-}
+  function insertAfter(source, anchor, snippet) {
+    const at = source.indexOf(anchor);
+    if (at < 0) throw new Error(`cannot find "${anchor.trim()}" in ${gradleFile}`);
+    const end = at + anchor.length;
+    return source.slice(0, end) + snippet + source.slice(end);
+  }
 
-function insertAfter(source, anchor, snippet) {
-  const at = source.indexOf(anchor);
-  if (at < 0) throw new Error(`cannot find "${anchor.trim()}" in ${gradleFile}`);
-  const end = at + anchor.length;
-  return source.slice(0, end) + snippet + source.slice(end);
-}
-
-try {
-  text = insertBefore(
-    text,
-    "android {",
-    `// SecCorp: release signing from environment variables (no secrets on disk).
+  try {
+    text = insertBefore(
+      text,
+      "android {",
+      `// SecCorp: release signing from environment variables (no secrets on disk).
 val seccomKeystore: String? = System.getenv("${MARKER}")
 
 `,
-  );
-  text = insertBefore(
-    text,
-    "    buildTypes {",
-    `    signingConfigs {
+    );
+    text = insertBefore(
+      text,
+      "    buildTypes {",
+      `    signingConfigs {
         create("release") {
             seccomKeystore?.let { keystore ->
                 storeFile = file(keystore)
@@ -74,20 +72,33 @@ val seccomKeystore: String? = System.getenv("${MARKER}")
         }
     }
 `,
-  );
-  text = insertAfter(
-    text,
-    'getByName("release") {',
-    `
+    );
+    text = insertAfter(
+      text,
+      'getByName("release") {',
+      `
             if (seccomKeystore != null) {
                 signingConfig = signingConfigs.getByName("release")
             }`,
-  );
-} catch (e) {
-  console.error(`error: ${e.message}`);
-  console.error("The generated Gradle file has an unexpected layout; add signing manually (see README).");
-  process.exit(1);
+    );
+  } catch (e) {
+    console.error(`error: ${e.message}`);
+    console.error("The generated Gradle file has an unexpected layout; add signing manually (see README).");
+    process.exit(1);
+  }
+
+  writeFileSync(gradleFile, text);
+  console.log(`release signing added to ${gradleFile}`);
 }
 
-writeFileSync(gradleFile, text);
-console.log(`release signing added to ${gradleFile}`);
+// Use the generated round launcher asset on launchers that support it.
+const manifestFile = join(genDir, "app", "src", "main", "AndroidManifest.xml");
+let manifest = readFileSync(manifestFile, "utf8");
+if (!manifest.includes("android:roundIcon=")) {
+  manifest = manifest.replace(
+    '        android:icon="@mipmap/ic_launcher"',
+    '        android:icon="@mipmap/ic_launcher"\n        android:roundIcon="@mipmap/ic_launcher_round"',
+  );
+  writeFileSync(manifestFile, manifest);
+  console.log(`round launcher icon added to ${manifestFile}`);
+}

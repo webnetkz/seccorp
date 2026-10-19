@@ -70,7 +70,7 @@ done
 rustup target add "${RUST_TARGETS[@]}"
 
 [[ -n "${SECCOM_UPDATE_PUBKEY:-}" ]] ||
-  echo "warning: SECCOM_UPDATE_PUBKEY is not set — online signature updates are disabled in this build (manual import still works)."
+  echo "Database updates: using the built-in Android Store signing key and feed."
 if [[ $DEBUG -eq 0 && -z "${SECCOM_ANDROID_KEYSTORE:-}" ]]; then
   echo "warning: SECCOM_ANDROID_KEYSTORE is not set — the release APK/AAB will be unsigned."
 fi
@@ -87,6 +87,21 @@ if [[ ! -f "$GEN/app/build.gradle.kts" ]]; then
   echo "Generating the Android project (tauri android init)…"
   npx tauri android init --ci --skip-targets-install
 fi
+
+# `tauri android init` keeps launcher resources in the generated (and ignored)
+# Gradle project. Regenerate them on every build so a stale default Tauri icon
+# can never get into a release package.
+ICON_OUT="$GEN/.seccom-icons"
+npx tauri icon src-tauri/icons/icon.png -o "$ICON_OUT"
+RES="$GEN/app/src/main/res"
+mkdir -p "$RES/mipmap-anydpi-v26" "$RES/values"
+cp -f "$ICON_OUT/android/mipmap-anydpi-v26/ic_launcher.xml" "$RES/mipmap-anydpi-v26/"
+cp -f "$ICON_OUT/android/values/ic_launcher_background.xml" "$RES/values/"
+for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+  mkdir -p "$RES/mipmap-$density"
+  cp -f "$ICON_OUT/android/mipmap-$density/"*.png "$RES/mipmap-$density/"
+done
+
 node "$ROOT/build/android/configure-gradle.mjs" "$GEN"
 
 declare -a ARGS=(tauri android build --ci --target $TARGETS)
