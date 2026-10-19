@@ -58,7 +58,7 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          if ("${{ inputs.store_msix || 'false' }}" -eq "true") {
+          if ("${{ inputs.store_msix || contains(github.event.head_commit.message, '[store-msix]') || startsWith(github.ref, 'refs/tags/') }}" -eq "true") {
             ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}" -StoreMsix
           } else {
             ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}"
