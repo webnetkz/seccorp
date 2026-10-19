@@ -58,9 +58,13 @@ Write-Host "Creating a disposable package-signing certificate"
 $PasswordText = [Guid]::NewGuid().ToString("N")
 $Password = ConvertTo-SecureString -String $PasswordText -Force -AsPlainText
 $Certificate = New-SelfSignedCertificate `
-  -Type Custom `
+  -Type CodeSigningCert `
   -Subject $Publisher `
-  -KeyUsage DigitalSignature `
+  -KeyAlgorithm RSA `
+  -KeyLength 2048 `
+  -KeyExportPolicy Exportable `
+  -HashAlgorithm SHA256 `
+  -NotAfter (Get-Date).AddDays(1) `
   -FriendlyName "SecCorp disposable MSIX test certificate" `
   -CertStoreLocation "Cert:\CurrentUser\My"
 
@@ -68,8 +72,8 @@ $PfxPath = Join-Path $env:RUNNER_TEMP "seccorp-msix-test.pfx"
 $CerPath = Join-Path $env:RUNNER_TEMP "seccorp-msix-test.cer"
 Export-PfxCertificate -Cert $Certificate -FilePath $PfxPath -Password $Password | Out-Null
 Export-Certificate -Cert $Certificate -FilePath $CerPath | Out-Null
-Import-Certificate -FilePath $CerPath -CertStoreLocation "Cert:\CurrentUser\Root" | Out-Null
 Import-Certificate -FilePath $CerPath -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
+Write-Host "The disposable signing certificate is trusted for the current runner user"
 
 $SignTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -File |
   Sort-Object FullName -Descending |
