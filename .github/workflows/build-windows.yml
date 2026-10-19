@@ -64,6 +64,11 @@ jobs:
             ./build/windows/build.ps1 -Arch "${{ inputs.arch || 'x64' }}"
           }
 
+      - name: Test packaged launch
+        if: inputs.store_msix || contains(github.event.head_commit.message, '[store-msix]') || startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: ./build/windows/diagnose-msix.ps1 -ArtifactRoot dist-release/windows/store -OutputDir dist-release/windows/msix-diagnostics
+
       - uses: actions/upload-artifact@v6
         with:
           name: seccom-windows

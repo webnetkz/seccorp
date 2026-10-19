@@ -26,6 +26,8 @@ $Package = Get-ChildItem -LiteralPath $ArtifactRoot -Filter "SecCorp_*.msix" -Fi
   Sort-Object FullName |
   Select-Object -First 1
 if (-not $Package) { throw "SecCorp MSIX was not found under $ArtifactRoot" }
+$TestPackagePath = Join-Path $OutputDir $Package.Name
+Copy-Item -LiteralPath $Package.FullName -Destination $TestPackagePath -Force
 
 $Publisher = "CN=E352DCED-B383-4C1F-91A8-E772B76C141A"
 $PasswordText = [Guid]::NewGuid().ToString("N")
@@ -49,10 +51,10 @@ $SignTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\si
   Select-Object -First 1
 if (-not $SignTool) { throw "signtool.exe was not found" }
 
-& $SignTool.FullName sign /fd SHA256 /f $PfxPath /p $PasswordText $Package.FullName
+& $SignTool.FullName sign /fd SHA256 /f $PfxPath /p $PasswordText $TestPackagePath
 if ($LASTEXITCODE -ne 0) { throw "signtool failed with exit code $LASTEXITCODE" }
 
-Add-AppxPackage -Path $Package.FullName -ForceApplicationShutdown
+Add-AppxPackage -Path $TestPackagePath -ForceApplicationShutdown
 $Installed = Get-AppxPackage -Name "38078WebNet.kz.SecCorp"
 if (-not $Installed) { throw "The SecCorp package was not installed" }
 
