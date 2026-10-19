@@ -51,7 +51,7 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      # The private key (.p8) only lives in the runner's temp dir.
+      # The private key (.p8) is materialized only on this ephemeral runner.
       - name: Prepare App Store Connect API key
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
@@ -82,18 +82,30 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          install -m 600 "$RUNNER_TEMP/private_keys/AuthKey_${APPLE_API_KEY}.p8" \
+            "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+
           shopt -s nullglob
-          ipas=(dist-release/ios/*.ipa)
-          if [ "${#ipas[@]}" -eq 0 ]; then
-            echo "::error::No iOS .ipa found to upload."
+          ipa_files=(dist-release/ios/*.ipa)
+          if [[ ${#ipa_files[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one iOS .ipa, found ${#ipa_files[@]}."
             exit 1
           fi
-          xcrun altool --upload-app --type ios --file "${ipas[0]}" \
+
+          xcrun altool --upload-app --type ios --file "${ipa_files[0]}" \
             --apiKey "$APPLE_API_KEY" --apiIssuer "$APPLE_API_ISSUER"
 
       - name: Remove API key
         if: always()
-        run: rm -f "$RUNNER_TEMP"/private_keys/AuthKey_*.p8
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          rm -f "$RUNNER_TEMP"/private_keys/AuthKey_*.p8
+          if [[ -n "${APPLE_API_KEY:-}" ]]; then
+            rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+          fi
 
       - uses: actions/upload-artifact@v6
         with:
