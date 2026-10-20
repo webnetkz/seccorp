@@ -16,6 +16,9 @@ use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "windows")]
+use std::time::Duration;
+
 const MAGIC: &[u8; 4] = b"SCQ1";
 const CHUNK: usize = 1 << 20;
 const TAG: usize = 16;
@@ -61,6 +64,103 @@ fn read_full<R: Read>(r: &mut R, buf: &mut [u8]) -> std::io::Result<usize> {
         }
     }
     Ok(n)
+}
+
+fn clear_read_only(path: &Path) {
+    if let Ok(metadata) = std::fs::metadata(path) {
+        let mut permissions = metadata.permissions();
+        if permissions.readonly() {
+            #[allow(clippy::permissions_set_readonly_false)]
+            permissions.set_readonly(false);
+            let _ = std::fs::set_permissions(path, permissions);
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn remove_original(path: &Path) -> std::io::Result<()> {
+    clear_read_only(path);
+    std::fs::remove_file(path)
+}
+
+/// Windows scanners, indexers and preview handlers can keep a file open for a
+/// short period after it has been read. Retry those transient failures and use
+/// FileDispositionInfoEx as a fallback: unlike DeleteFileW, it can ignore the
+/// read-only attribute and unlink a file while compatible handles remain open.
+#[cfg(target_os = "windows")]
+fn remove_original(path: &Path) -> std::io::Result<()> {
+    const RETRY_DELAYS_MS: &[u64] = &[0, 40, 100, 250, 500, 1_000];
+
+    clear_read_only(path);
+    let mut last_error = None;
+    for delay in RETRY_DELAYS_MS {
+        if *delay != 0 {
+            std::thread::sleep(Duration::from_millis(*delay));
+        }
+
+        let standard_error = match std::fs::remove_file(path) {
+            Ok(()) => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => error,
+        };
+
+        match remove_file_posix(path) {
+            Ok(()) => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            // ERROR_INVALID_PARAMETER means this Windows/file-system version
+            // does not implement FileDispositionInfoEx. Preserve the clearer
+            // error returned by the normal deletion attempt in that case.
+            Err(error) if error.raw_os_error() == Some(87) => last_error = Some(standard_error),
+            Err(error) => last_error = Some(error),
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| std::io::Error::other("the original file could not be removed")))
+}
+
+#[cfg(target_os = "windows")]
+fn remove_file_posix(path: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::Storage::FileSystem::{
+        CreateFileW, DELETE, FILE_DISPOSITION_FLAG_DELETE, FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE,
+        FILE_DISPOSITION_FLAG_POSIX_SEMANTICS, FILE_DISPOSITION_INFO_EX, FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_DELETE, FILE_SHARE_READ,
+        FILE_SHARE_WRITE, FileDispositionInfoEx, OPEN_EXISTING, SetFileInformationByHandle,
+    };
+
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    // SAFETY: `wide` is a live, NUL-terminated UTF-16 path. The handle is
+    // checked before use and closed on every path after CreateFileW succeeds.
+    unsafe {
+        let handle = CreateFileW(
+            wide.as_ptr(),
+            DELETE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_OPEN_REPARSE_POINT,
+            std::ptr::null_mut(),
+        );
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error());
+        }
+
+        let disposition = FILE_DISPOSITION_INFO_EX {
+            Flags: FILE_DISPOSITION_FLAG_DELETE | FILE_DISPOSITION_FLAG_POSIX_SEMANTICS | FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE,
+        };
+        let ok = SetFileInformationByHandle(
+            handle,
+            FileDispositionInfoEx,
+            (&disposition as *const FILE_DISPOSITION_INFO_EX).cast(),
+            std::mem::size_of::<FILE_DISPOSITION_INFO_EX>() as u32,
+        );
+        let error = (ok == 0).then(std::io::Error::last_os_error);
+        let _ = CloseHandle(handle);
+        match error {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
 }
 
 impl Quarantine {
@@ -149,19 +249,15 @@ impl Quarantine {
         std::fs::rename(&tmp, &bin).map_err(|e| Error::io_path(&bin, e))?;
         std::fs::write(&meta, serde_json::to_vec_pretty(&item)?).map_err(|e| Error::io_path(&meta, e))?;
 
-        // Finally remove the original. Clear read-only flags first (Windows).
-        if let Ok(m) = std::fs::metadata(path) {
-            let mut perms = m.permissions();
-            if perms.readonly() {
-                #[allow(clippy::permissions_set_readonly_false)]
-                perms.set_readonly(false);
-                let _ = std::fs::set_permissions(path, perms);
-            }
-        }
-        if let Err(e) = std::fs::remove_file(path) {
+        // The encrypted copy is committed before the original is removed. If
+        // isolation fails, roll the copy back so the UI never reports a file
+        // as quarantined while an executable original is still present.
+        if let Err(e) = remove_original(path) {
             let _ = std::fs::remove_file(&bin);
             let _ = std::fs::remove_file(&meta);
-            return Err(Error::Quarantine(format!("could not remove the original file (it may be in use): {e}")));
+            return Err(Error::Quarantine(format!(
+                "could not isolate the original file after retrying; close any app using it and try again. Administrator permission may be required for protected folders: {e}"
+            )));
         }
         Ok(item)
     }
@@ -382,5 +478,42 @@ mod tests {
         std::fs::write(&src, b"").unwrap();
         let item = vault.add(&src, "T").unwrap();
         assert_eq!(vault.read(&item.id).unwrap(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn read_only_file_is_quarantined() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = Quarantine::open(&dir.path().join("vault")).unwrap();
+        let src = dir.path().join("read-only.exe");
+        std::fs::write(&src, b"payload").unwrap();
+        let mut permissions = std::fs::metadata(&src).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&src, permissions).unwrap();
+
+        let item = vault.add(&src, "Test.Threat").unwrap();
+        assert!(!src.exists());
+        assert_eq!(vault.read(&item.id).unwrap(), b"payload");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn retries_while_windows_handle_temporarily_blocks_delete() {
+        use std::os::windows::fs::OpenOptionsExt;
+        use windows_sys::Win32::Storage::FileSystem::FILE_SHARE_READ;
+
+        let dir = tempfile::tempdir().unwrap();
+        let vault = Quarantine::open(&dir.path().join("vault")).unwrap();
+        let src = dir.path().join("temporarily-locked.exe");
+        std::fs::write(&src, b"payload").unwrap();
+        let held = std::fs::OpenOptions::new().read(true).share_mode(FILE_SHARE_READ).open(&src).unwrap();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(150));
+            drop(held);
+        });
+
+        let item = vault.add(&src, "Test.Threat").unwrap();
+        release.join().unwrap();
+        assert!(!src.exists());
+        assert_eq!(vault.read(&item.id).unwrap(), b"payload");
     }
 }

@@ -32,7 +32,15 @@ export function useThreatActions(onDone?: () => void) {
         const failed = results.filter((r) => !r.ok);
         const okCount = results.length - failed.length;
         if (okCount && action !== "ignore") toast(t("threats.resolved", { n: okCount }), "success");
-        if (failed.length) toast(t("threats.failed", { msg: failed[0].error ?? "" }), "error");
+        if (failed.length) {
+          const error = failed[0].error ?? "";
+          const msg =
+            action === "quarantine" &&
+            (error.includes("could not isolate the original file") || error.includes("could not remove the original file"))
+              ? t("threats.quarantineBlocked")
+              : error;
+          toast(t("threats.failed", { msg }), "error");
+        }
       } catch (e) {
         toast(errorText(e), "error");
       } finally {
