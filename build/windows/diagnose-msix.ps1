@@ -48,6 +48,11 @@ $FallbackRuntime = Join-Path $TestLayout "WebView2Runtime"
 if (Test-Path -LiteralPath $FallbackRuntime) {
   Remove-Item -LiteralPath $FallbackRuntime -Recurse -Force
 }
+$ManifestPath = Join-Path $TestLayout "AppxManifest.xml"
+[xml]$TestManifest = Get-Content -LiteralPath $ManifestPath
+$TestManifest.Package.Identity.Publisher =
+  "$($TestManifest.Package.Identity.Publisher), OID.2.25.311729368913984317654407730594956997722=1"
+$TestManifest.Save($ManifestPath)
 Write-Host "Repacking the lightweight launch-test package"
 & $MakeAppx.FullName pack /o /d $TestLayout /p $TestPackagePath | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed with exit code $LASTEXITCODE" }
