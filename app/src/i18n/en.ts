@@ -178,7 +178,7 @@ export const en: typeof ru = {
     resolved: "Done: {n}",
     failed: "Failed: {msg}",
     quarantineBlocked:
-      "Windows could not isolate the file. Close any app that may be using it and try again. Administrator permission may be required for protected folders.",
+      "Windows could not isolate the file. Close any app that may be using it and try again. For protected folders, approve the Administrator permission request.",
     fileType: "File type",
     score: "Heuristic score: {n}/100",
   },

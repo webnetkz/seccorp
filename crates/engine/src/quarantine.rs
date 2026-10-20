@@ -192,6 +192,28 @@ impl Quarantine {
 
     /// Moves `path` into the vault.
     pub fn add(&self, path: &Path, threat: &str) -> Result<QuarantineItem> {
+        self.add_inner(path, threat, None)
+    }
+
+    /// Moves `path` into the vault, allowing the caller to retry the final
+    /// source-file removal through a platform-specific privileged operation.
+    /// The callback receives the SHA-256 of the bytes already committed to the
+    /// encrypted vault and must remove exactly that file or return an error.
+    pub fn add_with_remove_fallback(
+        &self,
+        path: &Path,
+        threat: &str,
+        mut fallback: impl FnMut(&Path, &str, &std::io::Error) -> Result<()>,
+    ) -> Result<QuarantineItem> {
+        self.add_inner(path, threat, Some(&mut fallback))
+    }
+
+    fn add_inner(
+        &self,
+        path: &Path,
+        threat: &str,
+        mut fallback: Option<&mut dyn FnMut(&Path, &str, &std::io::Error) -> Result<()>>,
+    ) -> Result<QuarantineItem> {
         let id = uuid::Uuid::new_v4().simple().to_string();
         let (bin, meta) = self.paths(&id);
         let tmp = self.dir.join(format!("{id}.bin.tmp"));
@@ -252,12 +274,18 @@ impl Quarantine {
         // The encrypted copy is committed before the original is removed. If
         // isolation fails, roll the copy back so the UI never reports a file
         // as quarantined while an executable original is still present.
-        if let Err(e) = remove_original(path) {
-            let _ = std::fs::remove_file(&bin);
-            let _ = std::fs::remove_file(&meta);
-            return Err(Error::Quarantine(format!(
-                "could not isolate the original file after retrying; close any app using it and try again. Administrator permission may be required for protected folders: {e}"
-            )));
+        if let Err(error) = remove_original(path) {
+            let fallback_result = match fallback.as_mut() {
+                Some(remove) => remove(path, &item.sha256, &error),
+                None => Err(Error::Quarantine(format!(
+                    "could not isolate the original file after retrying; close any app using it and try again. Administrator permission may be required for protected folders: {error}"
+                ))),
+            };
+            if let Err(fallback_error) = fallback_result {
+                let _ = std::fs::remove_file(&bin);
+                let _ = std::fs::remove_file(&meta);
+                return Err(fallback_error);
+            }
         }
         Ok(item)
     }
@@ -396,6 +424,25 @@ impl Quarantine {
     }
 }
 
+/// Removes a file only when its current contents still match the encrypted
+/// quarantine copy. This is used by the short-lived Windows elevation helper;
+/// it deliberately performs no scanning and cannot accept an unchecked path.
+pub fn remove_file_if_hash_matches(path: &Path, expected_sha256: &str) -> Result<()> {
+    if expected_sha256.len() != 64 || !expected_sha256.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(Error::Quarantine("invalid expected SHA-256".into()));
+    }
+    let file = std::fs::File::open(path).map_err(|error| Error::io_path(path, error))?;
+    let metadata = file.metadata().map_err(|error| Error::io_path(path, error))?;
+    if !metadata.is_file() {
+        return Err(Error::Quarantine("the quarantine source is not a regular file".into()));
+    }
+    let (hashes, _) = crate::hashing::hash_reader(file, false, false).map_err(|error| Error::io_path(path, error))?;
+    if !hex::encode(hashes.sha256).eq_ignore_ascii_case(expected_sha256) {
+        return Err(Error::Quarantine("the source file changed after it was scanned; it was not removed".into()));
+    }
+    remove_original(path).map_err(|error| Error::io_path(path, error))
+}
+
 fn unique_path(p: &Path) -> PathBuf {
     if !p.exists() {
         return p.to_path_buf();
@@ -493,6 +540,27 @@ mod tests {
         let item = vault.add(&src, "Test.Threat").unwrap();
         assert!(!src.exists());
         assert_eq!(vault.read(&item.id).unwrap(), b"payload");
+    }
+
+    #[test]
+    fn checked_removal_rejects_changed_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("changed.exe");
+        std::fs::write(&src, b"new payload").unwrap();
+
+        let result = remove_file_if_hash_matches(&src, "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5");
+        assert!(result.is_err());
+        assert!(src.exists(), "a file with a different hash must remain untouched");
+    }
+
+    #[test]
+    fn checked_removal_deletes_matching_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("matching.exe");
+        std::fs::write(&src, b"payload").unwrap();
+
+        remove_file_if_hash_matches(&src, "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5").unwrap();
+        assert!(!src.exists());
     }
 
     #[cfg(target_os = "windows")]

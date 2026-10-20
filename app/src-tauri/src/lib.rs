@@ -2,6 +2,8 @@
 //! each platform (Windows, macOS, Android, iOS).
 
 mod commands;
+#[cfg(target_os = "windows")]
+mod elevation;
 mod i18n;
 #[cfg(desktop)]
 mod media;
@@ -164,6 +166,9 @@ fn init_logging() {
 pub fn run() {
     #[cfg(target_os = "windows")]
     {
+        if let Some(exit_code) = elevation::run_helper_if_requested() {
+            std::process::exit(exit_code);
+        }
         init_startup_diagnostics();
         if std::env::args().any(|argument| argument == BUNDLED_WEBVIEW2_ARG) {
             let _ = configure_bundled_webview2_runtime();

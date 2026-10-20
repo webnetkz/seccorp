@@ -264,9 +264,29 @@ pub async fn resolve_threats(app: AppHandle, ids: Vec<String>, action: String) -
                     if t.package_name.is_some() {
                         Err("installed apps must be uninstalled".into())
                     } else {
-                        state
-                            .quarantine
-                            .add(path, t.verdict.threat_name().unwrap_or("Unknown"))
+                        #[cfg(target_os = "windows")]
+                        let added = state.quarantine.add_with_remove_fallback(
+                            path,
+                            t.verdict.threat_name().unwrap_or("Unknown"),
+                            |source, sha256, removal_error| {
+                                if removal_error.kind() != std::io::ErrorKind::PermissionDenied
+                                    && removal_error.raw_os_error() != Some(5)
+                                {
+                                    return Err(seccom_engine::Error::Quarantine(format!(
+                                        "could not isolate the original file after retrying; close any app using it and try again: {removal_error}"
+                                    )));
+                                }
+                                crate::elevation::remove_with_uac(source, sha256).map_err(|error| {
+                                    seccom_engine::Error::Quarantine(format!(
+                                        "could not isolate the original file with Administrator permission: {error}"
+                                    ))
+                                })
+                            },
+                        );
+                        #[cfg(not(target_os = "windows"))]
+                        let added = state.quarantine.add(path, t.verdict.threat_name().unwrap_or("Unknown"));
+
+                        added
                             .map(|_| state.update_stats(|s| s.threats_neutralized += 1))
                             .map_err(|e| e.to_string())
                     }
