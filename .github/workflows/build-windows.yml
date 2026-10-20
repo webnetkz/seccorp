@@ -55,6 +55,10 @@ jobs:
           workspaces: ". -> target"
           key: windows
 
+      - name: Test Windows quarantine handling
+        shell: pwsh
+        run: cargo test -p seccom-engine --lib --target x86_64-pc-windows-msvc quarantine::tests
+
       - name: Build
         shell: pwsh
         run: |
