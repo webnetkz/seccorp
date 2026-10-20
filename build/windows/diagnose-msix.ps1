@@ -72,6 +72,9 @@ $PfxPath = Join-Path $env:RUNNER_TEMP "seccorp-msix-test.pfx"
 $CerPath = Join-Path $env:RUNNER_TEMP "seccorp-msix-test.cer"
 Export-PfxCertificate -Cert $Certificate -FilePath $PfxPath -Password $Password | Out-Null
 Export-Certificate -Cert $Certificate -FilePath $CerPath | Out-Null
+$CertUtil = Join-Path $env:SystemRoot "System32\certutil.exe"
+& $CertUtil -f -user -addstore Root $CerPath | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "certutil could not trust the disposable root certificate" }
 Import-Certificate -FilePath $CerPath -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
 Write-Host "The disposable signing certificate is trusted for the current runner user"
 
