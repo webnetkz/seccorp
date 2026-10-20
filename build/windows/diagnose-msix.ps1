@@ -23,7 +23,7 @@ $OutputDir = [System.IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 $Package = Get-ChildItem -LiteralPath $ArtifactRoot -Filter "SecCorp_*.msix" -File -Recurse |
-  Sort-Object FullName |
+  Sort-Object Length -Descending |
   Select-Object -First 1
 if (-not $Package) { throw "SecCorp MSIX was not found under $ArtifactRoot" }
 Write-Host "Preparing packaged-launch test from $($Package.Name)"
@@ -53,42 +53,8 @@ Write-Host "Repacking the lightweight launch-test package"
 if ($LASTEXITCODE -ne 0) { throw "makeappx pack failed with exit code $LASTEXITCODE" }
 Remove-Item -LiteralPath $TestLayout -Recurse -Force
 
-$Publisher = "CN=E352DCED-B383-4C1F-91A8-E772B76C141A"
-Write-Host "Creating a disposable package-signing certificate"
-$PasswordText = [Guid]::NewGuid().ToString("N")
-$Password = ConvertTo-SecureString -String $PasswordText -Force -AsPlainText
-$Certificate = New-SelfSignedCertificate `
-  -Type CodeSigningCert `
-  -Subject $Publisher `
-  -KeyAlgorithm RSA `
-  -KeyLength 2048 `
-  -KeyExportPolicy Exportable `
-  -HashAlgorithm SHA256 `
-  -NotAfter (Get-Date).AddDays(1) `
-  -FriendlyName "SecCorp disposable MSIX test certificate" `
-  -CertStoreLocation "Cert:\CurrentUser\My"
-
-$PfxPath = Join-Path $env:RUNNER_TEMP "seccorp-msix-test.pfx"
-$CerPath = Join-Path $env:RUNNER_TEMP "seccorp-msix-test.cer"
-Export-PfxCertificate -Cert $Certificate -FilePath $PfxPath -Password $Password | Out-Null
-Export-Certificate -Cert $Certificate -FilePath $CerPath | Out-Null
-$CertUtil = Join-Path $env:SystemRoot "System32\certutil.exe"
-& $CertUtil -f -user -addstore Root $CerPath | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "certutil could not trust the disposable root certificate" }
-Import-Certificate -FilePath $CerPath -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" | Out-Null
-Write-Host "The disposable signing certificate is trusted for the current runner user"
-
-$SignTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -File |
-  Sort-Object FullName -Descending |
-  Select-Object -First 1
-if (-not $SignTool) { throw "signtool.exe was not found" }
-
-Write-Host "Signing the disposable launch-test package"
-& $SignTool.FullName sign /fd SHA256 /f $PfxPath /p $PasswordText $TestPackagePath
-if ($LASTEXITCODE -ne 0) { throw "signtool failed with exit code $LASTEXITCODE" }
-
-Write-Host "Installing the launch-test package"
-Add-AppxPackage -Path $TestPackagePath -ForceApplicationShutdown
+Write-Host "Installing the disposable unsigned launch-test package"
+Add-AppxPackage -Path $TestPackagePath -AllowUnsigned -ForceApplicationShutdown
 $Installed = Get-AppxPackage -Name "38078WebNet.kz.SecCorp"
 if (-not $Installed) { throw "The SecCorp package was not installed" }
 
