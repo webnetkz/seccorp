@@ -3817,7 +3817,7 @@ dependencies = [
 
 [[package]]
 name = "seccom-app"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "chrono",
  "hex",
@@ -3846,7 +3846,7 @@ dependencies = [
 
 [[package]]
 name = "seccom-cli"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "anyhow",
  "clap",
@@ -3856,7 +3856,7 @@ dependencies = [
 
 [[package]]
 name = "seccom-engine"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "aho-corasick",
  "cfb 0.15.0",
@@ -3887,7 +3887,7 @@ dependencies = [
 
 [[package]]
 name = "seccom-sigtool"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "anyhow",
  "clap",
@@ -4697,7 +4697,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-seccom-device"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "serde",
  "serde_json",

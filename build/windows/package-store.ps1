@@ -213,7 +213,6 @@ try {
   </Applications>
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
-    <rescap:Capability Name="allowElevation" />
   </Capabilities>
 </Package>
 "@
@@ -233,6 +232,12 @@ try {
       $Identity.Version -ne $StoreVersion -or
       $Identity.ProcessorArchitecture -ne $Architecture) {
     throw "The packaged Store identity does not match Partner Center."
+  }
+  if ($PackedManifest.OuterXml -match 'Name="allowElevation"') {
+    throw "The Store package must not request the denied allowElevation capability."
+  }
+  if ($PackedManifest.OuterXml -notmatch 'Name="runFullTrust"') {
+    throw "The packaged classic app is missing the required runFullTrust capability."
   }
   foreach ($RequiredFile in @(
     "WebView2Runtime\msedgewebview2.exe",

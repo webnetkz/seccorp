@@ -9,7 +9,7 @@
 - Category: Utilities
 - Price: Free
 - Copyright: `2026 webnetkz`
-- Support URL: `https://github.com/webnetkz/seccorp/issues`
+- Support URL: `https://webnet.kz/`
 - Privacy policy URL: `https://github.com/webnetkz/seccorp/blob/main/docs/PRIVACY.md`
 - App privacy: Data Not Collected
 - Encryption: uses only exempt encryption provided by the operating system (HTTPS and local data protection); `ITSAppUsesNonExemptEncryption = NO`
@@ -114,7 +114,7 @@ Description:
 >
 > Приложение использует сигнатурный и эвристический анализ, проверяет содержимое архивов и помогает изолировать найденные угрозы в зашифрованном карантине. Файлы и результаты проверки не загружаются на сервер.
 >
-> Версия из Mac App Store работает в песочнице Apple и получает доступ только к тем файлам и папкам, которые вы явно выбрали. Для защиты всего диска, мониторинга файлов в реальном времени, подключаемых носителей и сетевых соединений используйте прямую версию SecCorp с сайта разработчика.
+> Версия из Mac App Store работает в песочнице Apple и получает доступ только к тем файлам и папкам, которые вы явно выбрали. Защита всего диска, мониторинг файлов в реальном времени, подключаемых носителей и сетевых соединений в этой версии недоступны.
 
 ## macOS — English
 
@@ -128,8 +128,8 @@ Description:
 >
 > It uses signature and heuristic analysis, inspects supported archives, and can isolate detections in encrypted quarantine. Files and scan results are not uploaded.
 >
-> The Mac App Store version runs inside Apple's sandbox and can access only files and folders that you explicitly select. Whole-disk protection, real-time file monitoring, removable-media checks, and network-connection monitoring remain available in the direct version of SecCorp from the developer.
+> The Mac App Store version runs inside Apple's sandbox and can access only files and folders that you explicitly select. Whole-disk protection, real-time file monitoring, removable-media checks, and network-connection monitoring are not available in this version.
 
 ## Review notes
 
-SecCorp does not claim system-wide protection on iOS. Use the system document picker to select a sample file. The Mac App Store binary is the sandboxed `mac-app-store` build and scans only user-selected items. The included EICAR string can be used to verify detection without real malware.
+SecCorp does not claim system-wide protection on iOS. Use the system document picker to select a sample file. The Mac App Store binary is the sandboxed `mac-app-store` build and scans only user-selected items. The included EICAR string can be used to verify detection without real malware. The Mac App Store build uses SecCorp's original Rust engine; it does not embed or execute the ClamAV engine. Its signed feed contains only the ClamAV formats supported by SecCorp and is delivered over HTTPS from GitHub Releases, with SHA-256 and Ed25519 verification before installation.

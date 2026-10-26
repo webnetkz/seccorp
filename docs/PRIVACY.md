@@ -12,7 +12,7 @@ On Android, SecCorp can request access to shared device storage to scan files se
 
 On iOS, SecCorp can access only files that the user explicitly imports or selects through Apple system interfaces. In the Mac App Store version, SecCorp can access only files and folders explicitly selected by the user. Quarantined items and scan history remain in the app's local container until the user removes them or uninstalls the app.
 
-Questions and support: [GitHub Issues](https://github.com/webnetkz/seccorp/issues)
+Questions and support: [WebNet](https://webnet.kz/)
 
 ## Русский
 
@@ -24,4 +24,4 @@ SecCorp — локальный сканер безопасности файло�
 
 На iOS SecCorp получает доступ только к файлам, которые пользователь явно импортировал или выбрал через системные интерфейсы Apple. Версия из Mac App Store получает доступ только к явно выбранным пользователем файлам и папкам. Карантин и история проверок хранятся локально в контейнере приложения, пока пользователь не удалит их или само приложение.
 
-Вопросы и поддержка: [GitHub Issues](https://github.com/webnetkz/seccorp/issues)
+Вопросы и поддержка: [WebNet](https://webnet.kz/)
