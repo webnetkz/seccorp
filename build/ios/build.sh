@@ -60,9 +60,27 @@ fi
 cd "$APP"
 npm ci --no-audit --no-fund
 
-if [[ ! -d "$GEN" ]]; then
+if [[ ! -f "$GEN/project.yml" ]]; then
   echo "Generating the Xcode project (tauri ios init)…"
   npx tauri ios init --ci
+fi
+
+# The generated project starts from Tauri's template. Replace the template's placeholder
+# app icon with SecCorp's (opaque PNGs: App Store Connect rejects an icon with an alpha
+# channel) and add the privacy manifest to the app target.
+ICONSET="$GEN/Assets.xcassets/AppIcon.appiconset"
+[[ -d "$ICONSET" ]] || die "$ICONSET is missing: delete $GEN and run this script again."
+cp -f "$APP"/src-tauri/icons/ios/AppIcon-*.png "$ICONSET/"
+TARGET_DIR=""
+for dir in "$GEN"/*_iOS; do
+  if [[ -d "$dir" ]]; then TARGET_DIR="$dir"; break; fi
+done
+[[ -n "$TARGET_DIR" ]] || die "no *_iOS folder in $GEN: delete $GEN and run this script again."
+if ! cmp -s "$APP/src-tauri/PrivacyInfo.xcprivacy" "$TARGET_DIR/PrivacyInfo.xcprivacy"; then
+  cp -f "$APP/src-tauri/PrivacyInfo.xcprivacy" "$TARGET_DIR/"
+  need xcodegen "Install it with: brew install xcodegen"
+  echo "Adding PrivacyInfo.xcprivacy to the Xcode project (xcodegen)…"
+  xcodegen generate --spec "$GEN/project.yml"
 fi
 
 if [[ $SIMULATOR -eq 1 ]]; then
