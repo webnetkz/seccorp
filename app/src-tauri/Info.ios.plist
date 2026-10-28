@@ -27,6 +27,12 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>SecCorp checks whether the device is protected with Face ID.</string>
+	<!-- The file picker (tauri-plugin-dialog) links the photo library and image picker
+	     APIs; App Store Connect rejects a build without these purpose strings. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SecCorp opens the photos and videos you choose so it can check them for threats.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SecCorp does not record with the camera. A photo you take in the file picker is only checked for threats on this device.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
